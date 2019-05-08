@@ -245,6 +245,12 @@ func (c *CmdClause) Alias(name string) *CmdClause {
 	return c
 }
 
+// AutoShortcut forces a specific value for the AutoShortcut feature on this command.
+func (c *CmdClause) AutoShortcut(value bool) *CmdClause {
+	c.flagGroup.autoShortcut = value
+	return c
+}
+
 // Validate sets a validation function to run when parsing.
 func (c *CmdClause) Validate(validator CmdClauseValidator) *CmdClause {
 	c.validator = validator

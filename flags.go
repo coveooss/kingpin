@@ -2,13 +2,14 @@ package kingpin
 
 import (
 	"fmt"
-	"strings"
 )
 
 type flagGroup struct {
-	short     map[string]*FlagClause
-	long      map[string]*FlagClause
-	flagOrder []*FlagClause
+	short        map[string]*FlagClause
+	long         map[string]*FlagClause
+	aliases      map[string]*FlagClause
+	flagOrder    []*FlagClause
+	autoShortcut bool
 }
 
 func newFlagGroup() *flagGroup {
@@ -85,44 +86,31 @@ loop:
 			defaultValue := ""
 			var flag *FlagClause
 			var ok bool
+			var err error
 			invert := false
 
 			name := token.Value
 			if token.Type == TokenLong {
-				flag, ok = f.long[name]
-				if !ok {
-					if strings.HasPrefix(name, "no-") {
-						name = name[3:]
-						invert = true
-					}
-					flag, ok = f.long[name]
-				}
-				if !ok {
+				if flag, invert, err = f.getFlagAlias(name); err != nil {
+					return nil, err
+				} else if flag == nil {
 					return nil, fmt.Errorf("unknown long flag '%s'", flagToken)
 				}
-			} else {
-				flag, ok = f.short[name]
-				if !ok {
-					return nil, fmt.Errorf("unknown short flag '%s'", flagToken)
-				}
+			} else if flag, ok = f.short[name]; !ok {
+				return nil, fmt.Errorf("unknown short flag '%s'", flagToken)
 			}
 
 			context.Next()
 
 			flag.isSetByUser()
 
-			fb, ok := flag.value.(boolFlag)
-			if ok && fb.IsBoolFlag() {
+			if fb, ok := flag.value.(boolFlag); ok && fb.IsBoolFlag() {
 				if invert {
 					defaultValue = "false"
 				} else {
 					defaultValue = "true"
 				}
 			} else {
-				if invert {
-					context.Push(token)
-					return nil, fmt.Errorf("unknown long flag '%s'", flagToken)
-				}
 				token = context.Peek()
 				if token.Type != TokenArg {
 					context.Push(token)
@@ -148,6 +136,7 @@ type FlagClause struct {
 	actionMixin
 	completionsMixin
 	envarMixin
+	aliasMixin
 	name          string
 	shorthand     rune
 	help          string
@@ -170,14 +159,13 @@ func (f *FlagClause) setDefault() error {
 		if v, ok := f.value.(repeatableFlag); !ok || !v.IsCumulative() {
 			// Use the value as-is
 			return f.value.Set(f.GetEnvarValue())
-		} else {
-			for _, value := range f.GetSplitEnvarValue() {
-				if err := f.value.Set(value); err != nil {
-					return err
-				}
-			}
-			return nil
 		}
+		for _, value := range f.GetSplitEnvarValue() {
+			if err := f.value.Set(value); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 
 	if len(f.defaultValues) > 0 {
@@ -216,46 +204,55 @@ func (f *FlagClause) init() error {
 	return nil
 }
 
-// Dispatch to the given function after the flag is parsed and validated.
+// Help redefines the help text already associated to a flag.
+func (f *FlagClause) Help(help string) *FlagClause {
+	f.help = help
+	return f
+}
+
+// Action dispatches to the given function after the flag is parsed and validated.
 func (f *FlagClause) Action(action Action) *FlagClause {
 	f.addAction(action)
 	return f
 }
 
+// PreAction dispatches to the given function after the flag is parsed but before it is validated
 func (f *FlagClause) PreAction(action Action) *FlagClause {
 	f.addPreAction(action)
 	return f
 }
 
 // HintAction registers a HintAction (function) for the flag to provide completions
-func (a *FlagClause) HintAction(action HintAction) *FlagClause {
-	a.addHintAction(action)
-	return a
+func (f *FlagClause) HintAction(action HintAction) *FlagClause {
+	f.addHintAction(action)
+	return f
 }
 
-// HintOptions registers any number of options for the flag to provide completions
-func (a *FlagClause) HintOptions(options ...string) *FlagClause {
-	a.addHintAction(func() []string {
+// HintOptions registers any number of options for the flag to provide completions.
+func (f *FlagClause) HintOptions(options ...string) *FlagClause {
+	f.addHintAction(func() []string {
 		return options
 	})
-	return a
+	return f
 }
 
-func (a *FlagClause) EnumVar(target *string, options ...string) {
-	a.parserMixin.EnumVar(target, options...)
-	a.addHintActionBuiltin(func() []string {
+// EnumVar makes this flag a enum flag.
+func (f *FlagClause) EnumVar(target *string, options ...string) {
+	f.parserMixin.EnumVar(target, options...)
+	f.addHintActionBuiltin(func() []string {
 		return options
 	})
 }
 
-func (a *FlagClause) Enum(options ...string) (target *string) {
-	a.addHintActionBuiltin(func() []string {
+// Enum makes this flag a enum flag.
+func (f *FlagClause) Enum(options ...string) (target *string) {
+	f.addHintActionBuiltin(func() []string {
 		return options
 	})
-	return a.parserMixin.Enum(options...)
+	return f.parserMixin.Enum(options...)
 }
 
-// IsSetByUser let to know if the flag was set by the user
+// IsSetByUser let to know if the flag was set by the user.
 func (f *FlagClause) IsSetByUser(setByUser *bool) *FlagClause {
 	if setByUser != nil {
 		*setByUser = false
@@ -265,11 +262,16 @@ func (f *FlagClause) IsSetByUser(setByUser *bool) *FlagClause {
 }
 
 // Default values for this flag. They *must* be parseable by the value of the flag.
-func (f *FlagClause) Default(values ...string) *FlagClause {
-	f.defaultValues = values
+func (f *FlagClause) Default(values ...interface{}) *FlagClause {
+	valuesStr := make([]string, len(values))
+	for i := range values {
+		valuesStr[i] = fmt.Sprint(values[i])
+	}
+	f.defaultValues = valuesStr
 	return f
 }
 
+// OverrideDefaultFromEnvar is replaced by Envar
 // DEPRECATED: Use Envar(name) instead.
 func (f *FlagClause) OverrideDefaultFromEnvar(envar string) *FlagClause {
 	return f.Envar(envar)

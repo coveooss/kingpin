@@ -140,6 +140,9 @@ func (p *ParseContext) mergeFlags(flags *flagGroup) {
 		}
 		p.flags.long[flag.name] = flag
 		p.flags.flagOrder = append(p.flags.flagOrder, flag)
+		if flag.autoShortcut == nil {
+			flag.autoShortcut = &flags.autoShortcut
+		}
 	}
 }
 
@@ -266,6 +269,7 @@ func (p *ParseContext) matchedCmd(cmd *CmdClause) {
 	p.mergeFlags(cmd.flagGroup)
 	p.mergeArgs(cmd.argGroup)
 	p.SelectedCommand = cmd
+	p.flags.aliases = nil
 }
 
 // Expand arguments from a file. Lines starting with # will be treated as comments.
