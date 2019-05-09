@@ -16,8 +16,13 @@ func (f *FlagClause) Alias(aliases ...string) *FlagClause {
 	return f
 }
 
-// AutoShortcut forces a specific value for the AutoShortcut feature on this flag.
-func (f *FlagClause) AutoShortcut(value bool) *FlagClause {
+// AutoShortcut enables automatic shortcut for this flag (overriding the flag group setting).
+func (f *FlagClause) AutoShortcut() *FlagClause { return f.setAutoShortcut(true) }
+
+// NoAutoShortcut disables automatic shortcut for this flag (overriding the flag group setting).
+func (f *FlagClause) NoAutoShortcut() *FlagClause { return f.setAutoShortcut(false) }
+
+func (f *FlagClause) setAutoShortcut(value bool) *FlagClause {
 	f.autoShortcut = &value
 	return f
 }

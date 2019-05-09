@@ -412,9 +412,9 @@ func TestAliasesAndShortcuts(t *testing.T) {
 	newApp := func() *app {
 		a := app{Application: newTestApp().AutoShortcut()}
 		a.Flag("option-one", "").Alias("first", "first-option").BoolVar(&a.o1)
-		a.Flag("option-two", "").Alias("second", "second-option").AutoShortcut(false).BoolVar(&a.o2)
-		c := a.Command("test", "").AutoShortcut(false).Default()
-		c.Flag("option-three", "").Alias("option-3", "third").AutoShortcut(true).Default(true).BoolVar(&a.o3)
+		a.Flag("option-two", "").Alias("second", "second-option").NoAutoShortcut().BoolVar(&a.o2)
+		c := a.Command("test", "").NoAutoShortcut().Default()
+		c.Flag("option-three", "").Alias("option-3", "third").AutoShortcut().Default(true).BoolVar(&a.o3)
 		c.Flag("option-off", "").String() // This one is only there to confirm that there is no conflict with --oo (--option-one)
 		return &a
 	}
