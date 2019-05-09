@@ -1,4 +1,4 @@
-module github.com/alecthomas/kingpin
+module github.com/coveo/kingpin/v2
 
 require (
 	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc

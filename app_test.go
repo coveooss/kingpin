@@ -452,3 +452,85 @@ func TestAliasesAndShortcuts(t *testing.T) {
 		})
 	}
 }
+
+func TestUnmanaged(t *testing.T) {
+	type app struct {
+		*Application
+		b []bool
+		s []string
+	}
+	newApp := func() *app {
+		const nbElements = 5
+		a := app{
+			Application: newTestApp().AutoShortcut(),
+			b:           make([]bool, nbElements),
+			s:           make([]string, nbElements),
+		}
+		for i := 0; i < nbElements; i++ {
+			a.Flag(fmt.Sprintf("bool-%d", i+1), "").Short(rune('a' + i)).BoolVar(&a.b[i])
+			a.Flag(fmt.Sprintf("string-%d", i+1), "").Short(rune('A' + i)).StringVar(&a.s[i])
+		}
+		return &a
+	}
+	cases := []struct {
+		name            string
+		managed         bool
+		args            string
+		expectB         []bool
+		expectS         []string
+		expectUnmanaged []string
+		expectErr       error
+	}{
+		{"All shorts", false, "-abcde -ABCDE",
+			[]bool{true, true, true, true, true},
+			[]string{"BCDE", "", "", "", ""},
+			nil, nil},
+		{"Normal", false, "--bool-1 --b3 -e --s2=x -Dy",
+			[]bool{true, false, true, false, true},
+			[]string{"", "x", "", "y", ""},
+			nil, nil},
+		{"Mixed", true, "xxx --bA --test abc -Abc --string-3=test -s x zzz",
+			[]bool{false, false, false, false, false},
+			[]string{"bc", "", "test", "", ""},
+			[]string{"xxx", "--bA", "--test", "abc", "-s", "x", "zzz"}, nil},
+		{"Error", false, "xxx -b",
+			[]bool{false, false, false, false, false},
+			[]string{"", "", "", "", ""},
+			nil, fmt.Errorf("unexpected xxx")},
+		{"Remaining args", true, "-b -- -sx --test",
+			[]bool{false, true, false, false, false},
+			[]string{"", "", "", "", ""},
+			[]string{"-sx", "--test"}, nil},
+		{"Bad switch", true, "-abcdef -ABCDEF",
+			[]bool{false, false, false, false, false},
+			[]string{"BCDEF", "", "", "", ""},
+			[]string{"-abcdef"}, nil},
+		{"Bad switch end", true, "-abcdeX",
+			[]bool{false, false, false, false, false},
+			[]string{"", "", "", "", ""},
+			[]string{"-abcdeX"}, nil},
+		{"Bad switch mixed", true, "-ab -cX -de",
+			[]bool{true, true, false, true, true},
+			[]string{"", "", "", "", ""},
+			[]string{"-cX"}, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			assert.NotPanics(t, func() {
+				a := newApp()
+				if c.managed {
+					a.AllowUnmanaged()
+				}
+				_, err := a.Parse(strings.Split(c.args, " "))
+				if c.expectErr == nil {
+					assert.NoError(t, err)
+				} else {
+					assert.EqualError(t, err, c.expectErr.Error())
+				}
+				assert.Equal(t, c.expectB, a.b, "bool(s)")
+				assert.Equal(t, c.expectS, a.s, "string(s)")
+				assert.Equal(t, c.expectUnmanaged, a.Unmanaged, "Unmanaged")
+			})
+		})
+	}
+}
