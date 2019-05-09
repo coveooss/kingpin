@@ -245,9 +245,14 @@ func (c *CmdClause) Alias(name string) *CmdClause {
 	return c
 }
 
-// AutoShortcut forces a specific value for the AutoShortcut feature on this command.
-func (c *CmdClause) AutoShortcut(value bool) *CmdClause {
-	c.flagGroup.autoShortcut = value
+// AutoShortcut enables automatic shortcut for this flag (overriding the flag group setting).
+func (c *CmdClause) AutoShortcut() *CmdClause { return c.setAutoShortcut(true) }
+
+// NoAutoShortcut disables automatic shortcut for this flag (overriding the flag group setting).
+func (c *CmdClause) NoAutoShortcut() *CmdClause { return c.setAutoShortcut(false) }
+
+func (c *CmdClause) setAutoShortcut(value bool) *CmdClause {
+	c.autoShortcut = value
 	return c
 }
 
