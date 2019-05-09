@@ -3,6 +3,7 @@ package kingpin
 import (
 	"fmt"
 	"io/ioutil"
+	"unicode"
 
 	"github.com/stretchr/testify/assert"
 
@@ -393,7 +394,7 @@ func TestBashCompletionOptions(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		context, _ := a.ParseContext(strings.Split(c.Args, " "))
+		context, _ := a.ParseContext(split(c.Args))
 		args := a.completionOptions(context)
 
 		sort.Strings(args)
@@ -440,7 +441,7 @@ func TestAliasesAndShortcuts(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.args, func(t *testing.T) {
 			a := newApp()
-			_, err := a.Parse(strings.Split(c.args, " "))
+			_, err := a.Parse(split(c.args))
 			if c.expectErr == nil {
 				assert.NoError(t, err)
 			} else {
@@ -521,7 +522,7 @@ func TestUnmanaged(t *testing.T) {
 				if c.managed {
 					a.AllowUnmanaged()
 				}
-				_, err := a.Parse(strings.Split(c.args, " "))
+				_, err := a.Parse(split(c.args))
 				if c.expectErr == nil {
 					assert.NoError(t, err)
 				} else {
@@ -533,4 +534,65 @@ func TestUnmanaged(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestDefaultValues(t *testing.T) {
+	type app struct {
+		*Application
+		b []bool
+		s []string
+	}
+	newApp := func() *app {
+		const nbElements = 5
+		a := app{
+			Application: newTestApp().AutoShortcut().InitOnlyOnce(),
+			b:           make([]bool, nbElements),
+			s:           make([]string, nbElements),
+		}
+		for i := 0; i < nbElements; i++ {
+			a.Flag(fmt.Sprintf("bool-%d", i+1), "").Short(rune('a' + i)).Default(i%2 == 0).BoolVar(&a.b[i])
+			a.Flag(fmt.Sprintf("string-%d", i+1), "").Short(rune('A' + i)).Default(fmt.Sprint("Default", i+1)).StringVar(&a.s[i])
+		}
+		return &a
+	}
+	cases := []struct {
+		name            string
+		args1, args2    string
+		expectB         []bool
+		expectS         []string
+		expectUnmanaged []string
+		expectErr       error
+	}{
+		{"No args", "", "",
+			[]bool{true, false, true, false, true},
+			[]string{"Default1", "Default2", "Default3", "Default4", "Default5"},
+			nil, nil},
+		{"Invert", "--nb1 --b2 -C test", "",
+			[]bool{false, true, true, false, true},
+			[]string{"Default1", "Default2", "test", "Default4", "Default5"},
+			nil, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			assert.NotPanics(t, func() {
+				a := newApp()
+				_, err := a.Parse(split(c.args1))
+				if err == nil {
+					_, err = a.Parse(split(c.args2))
+				}
+				if c.expectErr == nil {
+					assert.NoError(t, err)
+				} else {
+					assert.EqualError(t, err, c.expectErr.Error())
+				}
+				assert.Equal(t, c.expectB, a.b, "bool(s)")
+				assert.Equal(t, c.expectS, a.s, "string(s)")
+				assert.Equal(t, c.expectUnmanaged, a.Unmanaged, "Unmanaged")
+			})
+		})
+	}
+}
+
+func split(s string) []string {
+	return strings.FieldsFunc(s, func(c rune) bool { return unicode.IsSpace(c) })
 }

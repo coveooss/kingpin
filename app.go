@@ -39,6 +39,7 @@ type Application struct {
 	defaultEnvars  bool
 	completion     bool
 	allowUnmanaged bool
+	initMode       initMode
 
 	// Help flag. Exposed for user customisation.
 	HelpFlag *FlagClause
@@ -49,6 +50,15 @@ type Application struct {
 	// Unmanaged will contains flags that are rejected by Parse only if AllowUnmanaged is set
 	Unmanaged []string
 }
+
+// Defines the behaviour when Parse is called multiple time on the same application
+type initMode byte
+
+const (
+	initOnEachParse initMode = iota
+	initDisabledOnMultipleParse
+	initDisabled
+)
 
 // New creates a new Kingpin application instance.
 func New(name, help string) *Application {
@@ -317,6 +327,12 @@ func (a *Application) AllowUnmanaged() *Application {
 	return a
 }
 
+// InitOnlyOnce instructs the Parser to remove the default initialization from Env vars or default
+func (a *Application) InitOnlyOnce() *Application {
+	a.initMode = initDisabledOnMultipleParse
+	return a
+}
+
 func (a *Application) defaultEnvarPrefix() string {
 	if a.defaultEnvars {
 		return a.Name
@@ -435,21 +451,28 @@ func (a *Application) setDefaults(context *ParseContext) error {
 		}
 	}
 
-	// Check required flags and set defaults.
-	for _, flag := range context.flags.long {
-		if flagElements[flag.name] == nil {
-			if err := flag.setDefault(); err != nil {
-				return err
+	if a.initMode != initDisabled {
+		// Check required flags and set defaults.
+		for _, flag := range context.flags.long {
+			if flagElements[flag.name] == nil {
+				if err := flag.setDefault(); err != nil {
+					return err
+				}
+			}
+		}
+
+		for _, arg := range context.arguments.args {
+			if argElements[arg.name] == nil {
+				if err := arg.setDefault(); err != nil {
+					return err
+				}
 			}
 		}
 	}
 
-	for _, arg := range context.arguments.args {
-		if argElements[arg.name] == nil {
-			if err := arg.setDefault(); err != nil {
-				return err
-			}
-		}
+	if a.initMode == initDisabledOnMultipleParse {
+		// We do not want to init the values
+		a.initMode = initDisabled
 	}
 
 	return nil
