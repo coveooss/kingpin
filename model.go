@@ -2,6 +2,7 @@ package kingpin
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -53,6 +54,7 @@ type FlagModel struct {
 	Short       rune
 	Default     []string
 	Envar       string
+	Aliases     []string
 	PlaceHolder string
 	Required    bool
 	Hidden      bool
@@ -200,6 +202,11 @@ func (f *flagGroup) Model() *FlagGroupModel {
 }
 
 func (f *FlagClause) Model() *FlagModel {
+	var aliases []string
+	for alias := range f.aliases {
+		aliases = append(aliases, alias)
+	}
+	sort.Strings(aliases)
 	return &FlagModel{
 		Name:        f.name,
 		Help:        f.help,
@@ -207,6 +214,7 @@ func (f *FlagClause) Model() *FlagModel {
 		Default:     f.defaultValues,
 		Envar:       f.envar,
 		PlaceHolder: f.placeholder,
+		Aliases:     aliases,
 		Required:    f.required,
 		Hidden:      f.hidden,
 		Value:       f.value,

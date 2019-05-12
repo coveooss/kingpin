@@ -1,7 +1,9 @@
 package kingpin
 
 import (
+	"fmt"
 	"io/ioutil"
+	"unicode"
 
 	"github.com/stretchr/testify/assert"
 
@@ -400,5 +402,57 @@ func TestBashCompletionOptions(t *testing.T) {
 
 		assert.Equal(t, c.ExpectedOptions, args, "Expected != Actual: [%v] != [%v]. \nInput was: [%v]", c.ExpectedOptions, args, c.Args)
 	}
+}
 
+func TestAliases(t *testing.T) {
+	type app struct {
+		*Application
+		o1, o2, o3 bool
+	}
+
+	newApp := func() *app {
+		a := app{Application: newTestApp()}
+		a.Flag("option-one", "").Alias("first", "first-option").BoolVar(&a.o1)
+		a.Flag("option-two", "").Alias("second", "second-option").BoolVar(&a.o2)
+		c := a.Command("test", "").Default()
+		c.Flag("option-three", "").Alias("option-3", "third").Default("true").BoolVar(&a.o3)
+		return &a
+	}
+
+	cases := []struct {
+		name      string
+		args      string
+		expect1   bool
+		expect2   bool
+		expect3   bool
+		expectErr error
+	}{
+		{"Empty", "", false, false, true, nil},
+		{"With command", "test --option-one --option-three", true, false, true, nil},
+		{"Alias", "--first", true, false, true, nil},
+		{"Negative alias", "--no-third", false, false, false, nil},
+		{"Mixed alias", "--first-option --option-three", true, false, true, nil},
+		{"Duplicate flags", "--first-option --option-three --no-option-three", true, false, true, fmt.Errorf("flag 'option-three' cannot be repeated")},
+		{"Negative long option", "--no-first-option", false, false, true, nil},
+		{"Duplicate negative alias", "--option-one --no-first-option", true, false, true, fmt.Errorf("flag 'option-one' cannot be repeated")},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			a := newApp()
+			_, err := a.Parse(split(c.args))
+			if c.expectErr == nil {
+				assert.Equal(t, c.expectErr, err)
+			} else {
+				assert.EqualError(t, err, c.expectErr.Error())
+			}
+			assert.Equal(t, c.expect1, a.o1, "option-one")
+			assert.Equal(t, c.expect2, a.o2, "option-two")
+			assert.Equal(t, c.expect3, a.o3, "option-three")
+		})
+	}
+}
+
+func split(s string) []string {
+	return strings.FieldsFunc(s, func(c rune) bool { return unicode.IsSpace(c) })
 }
