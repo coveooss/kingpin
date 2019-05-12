@@ -265,8 +265,12 @@ func (f *FlagClause) IsSetByUser(setByUser *bool) *FlagClause {
 }
 
 // Default values for this flag. They *must* be parseable by the value of the flag.
-func (f *FlagClause) Default(values ...string) *FlagClause {
-	f.defaultValues = values
+func (f *FlagClause) Default(values ...interface{}) *FlagClause {
+	valuesStr := make([]string, len(values))
+	for i := range values {
+		valuesStr[i] = fmt.Sprint(values[i])
+	}
+	f.defaultValues = valuesStr
 	return f
 }
 
