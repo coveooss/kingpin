@@ -39,6 +39,7 @@ type Application struct {
 	noInterspersed bool             // can flags be interspersed with args (or must they come first)
 	defaultEnvars  bool
 	completion     bool
+	allowUnmanaged bool
 
 	// Help flag. Exposed for user customisation.
 	HelpFlag *FlagClause
@@ -46,6 +47,8 @@ type Application struct {
 	HelpCommand *CmdClause
 	// Version flag. Exposed for user customisation. May be nil.
 	VersionFlag *FlagClause
+	// Unmanaged will contains flags that are rejected by Parse only if AllowUnmanaged is set
+	Unmanaged []string
 }
 
 // New creates a new Kingpin application instance.
@@ -178,6 +181,9 @@ func (a *Application) parseContext(ignoreDefault bool, args []string) (*ParseCon
 		return nil, err
 	}
 	context := tokenize(args, ignoreDefault)
+	if a.allowUnmanaged {
+		context.appUnmanagedArgs = a
+	}
 	err := parse(context, a)
 	return context, err
 }
@@ -303,6 +309,12 @@ func (a *Application) Command(name, help string) *CmdClause {
 // true (the default) means that they can, false means that all the flags must appear before the first positional arguments.
 func (a *Application) Interspersed(interspersed bool) *Application {
 	a.noInterspersed = !interspersed
+	return a
+}
+
+// AllowUnmanaged splits up managed arguments from unmanaged one instead of returning an error on parse.
+func (a *Application) AllowUnmanaged() *Application {
+	a.allowUnmanaged = true
 	return a
 }
 
