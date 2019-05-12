@@ -8,13 +8,13 @@ import (
 var (
 	// CommandLine is the default Kingpin parser.
 	CommandLine = New(filepath.Base(os.Args[0]), "")
-	// Global help flag. Exposed for user customisation.
+	// HelpFlag is the global help flag. Exposed for user customisation.
 	HelpFlag = CommandLine.HelpFlag
-	// Top-level help command. Exposed for user customisation. May be nil.
+	// HelpCommand is the top-level help command. Exposed for user customisation. May be nil.
 	HelpCommand = CommandLine.HelpCommand
-	// Global version flag. Exposed for user customisation. May be nil.
+	// VersionFlag is the global version flag. Exposed for user customisation. May be nil.
 	VersionFlag = CommandLine.VersionFlag
-	// Whether to file expansion with '@' is enabled.
+	// EnableFileExpansion indicates Whether to file expansion with '@' is enabled.
 	EnableFileExpansion = true
 )
 
@@ -77,7 +77,7 @@ func Usage() {
 	CommandLine.Usage(os.Args[1:])
 }
 
-// Set global usage template to use (defaults to DefaultUsageTemplate).
+// UsageTemplate set global usage template to use (defaults to DefaultUsageTemplate).
 func UsageTemplate(template string) *Application {
 	return CommandLine.UsageTemplate(template)
 }

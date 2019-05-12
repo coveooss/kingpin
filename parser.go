@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 )
 
+// TokenType represents the type of token found by the parser.
 type TokenType int
 
 // Token types.
@@ -36,23 +37,28 @@ func (t TokenType) String() string {
 }
 
 var (
+	// TokenEOLMarker is a token indicating end of line.
 	TokenEOLMarker = Token{-1, TokenEOL, ""}
 )
 
+// Token represents an element found during the parsing.
 type Token struct {
 	Index int
 	Type  TokenType
 	Value string
 }
 
+// Equal returns true if two token are at the same position.
 func (t *Token) Equal(o *Token) bool {
 	return t.Index == o.Index
 }
 
+// IsFlag determines if the token is either a long option -- or a short option -.
 func (t *Token) IsFlag() bool {
 	return t.Type == TokenShort || t.Type == TokenLong
 }
 
+// IsEOF determines if the token is a end of line token.
 func (t *Token) IsEOF() bool {
 	return t.Type == TokenEOL
 }
@@ -74,7 +80,7 @@ func (t *Token) String() string {
 	}
 }
 
-// A union of possible elements in a parse stack.
+// ParseElement is an union of possible elements in a parse stack.
 type ParseElement struct {
 	// Clause is either *CmdClause, *ArgClause or *FlagClause.
 	Clause interface{}
@@ -149,6 +155,7 @@ func (p *ParseContext) mergeArgs(args *argGroup) {
 	}
 }
 
+// EOL determines if the current token represents an end of line.
 func (p *ParseContext) EOL() bool {
 	return p.Peek().Type == TokenEOL
 }
@@ -230,6 +237,7 @@ func (p *ParseContext) Next() *Token {
 	return &Token{p.argi, TokenArg, arg}
 }
 
+// Peek returns the current token.
 func (p *ParseContext) Peek() *Token {
 	if len(p.peek) == 0 {
 		return p.Push(p.Next())
@@ -237,6 +245,7 @@ func (p *ParseContext) Peek() *Token {
 	return p.peek[len(p.peek)-1]
 }
 
+// Push add a token to the list of token.
 func (p *ParseContext) Push(token *Token) *Token {
 	p.peek = append(p.peek, token)
 	return token
@@ -268,7 +277,7 @@ func (p *ParseContext) matchedCmd(cmd *CmdClause) {
 	p.SelectedCommand = cmd
 }
 
-// Expand arguments from a file. Lines starting with # will be treated as comments.
+// ExpandArgsFromFile expands arguments from a file. Lines starting with # will be treated as comments.
 func ExpandArgsFromFile(filename string) (out []string, err error) {
 	if filename == "" {
 		return nil, fmt.Errorf("expected @ file to expand arguments from")

@@ -9,6 +9,7 @@ import (
 	"github.com/alecthomas/units"
 )
 
+// Settings is an interface that support setting values.
 type Settings interface {
 	SetValue(value Value)
 }

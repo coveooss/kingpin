@@ -10,6 +10,7 @@ import (
 )
 
 var (
+	// ErrCommandNotSpecified is an error object returned when no command is specified.
 	ErrCommandNotSpecified = fmt.Errorf("command not specified")
 )
 
@@ -17,6 +18,7 @@ var (
 	envarTransformRegexp = regexp.MustCompile(`[^a-zA-Z0-9_]+`)
 )
 
+// ApplicationValidator is a function handler prototype to validate application.
 type ApplicationValidator func(*Application) error
 
 // An Application contains the definitions of flags, arguments and commands
@@ -189,7 +191,6 @@ func (a *Application) parseContext(ignoreDefault bool, args []string) (*ParseCon
 // This will populate all flag and argument values, call all callbacks, and so
 // on.
 func (a *Application) Parse(args []string) (command string, err error) {
-
 	context, parseErr := a.ParseContext(args)
 	selected := []string{}
 	var setValuesErr error
@@ -287,7 +288,7 @@ func (a *Application) Action(action Action) *Application {
 	return a
 }
 
-// Action called after parsing completes but before validation and execution.
+// PreAction called after parsing completes but before validation and execution.
 func (a *Application) PreAction(action Action) *Application {
 	a.addPreAction(action)
 	return a

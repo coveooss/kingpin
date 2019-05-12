@@ -63,6 +63,7 @@ func (a *argGroup) init() error {
 	return nil
 }
 
+// ArgClause represents a argument.
 type ArgClause struct {
 	actionMixin
 	parserMixin
@@ -149,11 +150,13 @@ func (a *ArgClause) NoEnvar() *ArgClause {
 	return a
 }
 
+// Action called after parsing and validation are completed.
 func (a *ArgClause) Action(action Action) *ArgClause {
 	a.addAction(action)
 	return a
 }
 
+// PreAction called after parsing completes but before validation and execution.
 func (a *ArgClause) PreAction(action Action) *ArgClause {
 	a.addPreAction(action)
 	return a

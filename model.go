@@ -19,16 +19,17 @@ var (
 	}
 )
 
+// FlagGroupModel represents a read only value of a flagGroup.
 type FlagGroupModel struct {
 	Flags []*FlagModel
 }
 
+// FlagSummary returns a summary string for all flags in a flag group.
 func (f *FlagGroupModel) FlagSummary() string {
 	out := []string{}
 	count := 0
 
 	for _, flag := range f.Flags {
-
 		if !ignoreInCount[flag.Name] {
 			count++
 		}
@@ -47,6 +48,7 @@ func (f *FlagGroupModel) FlagSummary() string {
 	return strings.Join(out, " ")
 }
 
+// FlagModel represents a read only value of an FlagClause.
 type FlagModel struct {
 	Name        string
 	Help        string
@@ -63,6 +65,7 @@ func (f *FlagModel) String() string {
 	return f.Value.String()
 }
 
+// IsBoolFlag determines if the current FlagModel is a switch.
 func (f *FlagModel) IsBoolFlag() bool {
 	if fl, ok := f.Value.(boolFlag); ok {
 		return fl.IsBoolFlag()
@@ -70,6 +73,7 @@ func (f *FlagModel) IsBoolFlag() bool {
 	return false
 }
 
+// FormatPlaceHolder returns a string representing the place holder for the value associated to the flag.
 func (f *FlagModel) FormatPlaceHolder() string {
 	if f.PlaceHolder != "" {
 		return f.PlaceHolder
@@ -87,10 +91,12 @@ func (f *FlagModel) FormatPlaceHolder() string {
 	return strings.ToUpper(f.Name)
 }
 
+// ArgGroupModel returns a read only value of an argument group.
 type ArgGroupModel struct {
 	Args []*ArgModel
 }
 
+// ArgSummary returns the summary string representing the arguments.
 func (a *ArgGroupModel) ArgSummary() string {
 	depth := 0
 	out := []string{}
@@ -106,6 +112,7 @@ func (a *ArgGroupModel) ArgSummary() string {
 	return strings.Join(out, " ")
 }
 
+// ArgModel represents a read only value of an argument clause.
 type ArgModel struct {
 	Name     string
 	Help     string
@@ -119,10 +126,12 @@ func (a *ArgModel) String() string {
 	return a.Value.String()
 }
 
+// CmdGroupModel represents a read only value of a command group.
 type CmdGroupModel struct {
 	Commands []*CmdModel
 }
 
+// FlattenedCommands returns the list of command model (handling recursive sub command definition).
 func (c *CmdGroupModel) FlattenedCommands() (out []*CmdModel) {
 	for _, cmd := range c.Commands {
 		if len(cmd.Commands) == 0 {
@@ -133,6 +142,7 @@ func (c *CmdGroupModel) FlattenedCommands() (out []*CmdModel) {
 	return
 }
 
+// CmdModel represents a read only value of an command.
 type CmdModel struct {
 	Name        string
 	Aliases     []string
@@ -150,6 +160,7 @@ func (c *CmdModel) String() string {
 	return c.FullCommand
 }
 
+// ApplicationModel represents a read only value of an application.
 type ApplicationModel struct {
 	Name    string
 	Help    string
@@ -160,6 +171,7 @@ type ApplicationModel struct {
 	*FlagGroupModel
 }
 
+// Model returns a read only value of an application.
 func (a *Application) Model() *ApplicationModel {
 	return &ApplicationModel{
 		Name:           a.Name,
@@ -180,6 +192,7 @@ func (a *argGroup) Model() *ArgGroupModel {
 	return m
 }
 
+// Model returns a read only value of an argument clause.
 func (a *ArgClause) Model() *ArgModel {
 	return &ArgModel{
 		Name:     a.name,
@@ -199,6 +212,7 @@ func (f *flagGroup) Model() *FlagGroupModel {
 	return m
 }
 
+// Model returns a read only value of a Flag.
 func (f *FlagClause) Model() *FlagModel {
 	return &FlagModel{
 		Name:        f.name,
@@ -221,6 +235,7 @@ func (c *cmdGroup) Model() *CmdGroupModel {
 	return m
 }
 
+// Model returns a read only value of a Command.
 func (c *CmdClause) Model() *CmdModel {
 	depth := 0
 	for i := c; i != nil; i = i.parent {
