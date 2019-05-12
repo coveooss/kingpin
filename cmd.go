@@ -273,11 +273,17 @@ func (c *CmdClause) Default() *CmdClause {
 }
 
 func (c *CmdClause) Action(action Action) *CmdClause {
+	if action == nil {
+		c.actions = nil
+	}
 	c.addAction(action)
 	return c
 }
 
 func (c *CmdClause) PreAction(action Action) *CmdClause {
+	if action == nil {
+		c.preActions = nil
+	}
 	c.addPreAction(action)
 	return c
 }
