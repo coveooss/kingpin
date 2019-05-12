@@ -1,12 +1,12 @@
 package kingpin
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"testing"
 )
 
 func TestBool(t *testing.T) {
@@ -389,4 +389,36 @@ func TestIsSetByUser(t *testing.T) {
 	assert.Error(t, err)
 	assert.True(t, isSet)
 	assert.False(t, isSet2)
+}
+
+func TestDeleteFlag(t *testing.T) {
+	cases := []struct {
+		name     string
+		group    []string
+		toRemove string
+		wanted   []string
+		wantErr  error
+	}{
+		{"Empty list", nil, "", nil, fmt.Errorf("Flag  does not exist")},
+		{"Non existing", []string{"a", "b", "c"}, "d", []string{"a", "b", "c"}, fmt.Errorf("Flag d does not exist")},
+		{"First", []string{"a", "b", "c"}, "a", []string{"b", "c"}, nil},
+		{"Middle", []string{"a", "b", "c"}, "b", []string{"a", "c"}, nil},
+		{"Last", []string{"a", "b", "c"}, "c", []string{"a", "b"}, nil},
+		{"Duplicated", []string{"a", "b", "c", "a"}, "a", []string{"b", "c"}, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			f := newFlagGroup()
+			for i := range c.group {
+				f.Flag(c.group[i], "")
+			}
+			err := f.DeleteFlag(c.toRemove)
+			if c.wantErr != nil {
+				assert.EqualError(t, err, c.wantErr.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, c.wanted, f.GetNames())
+		})
+	}
 }
