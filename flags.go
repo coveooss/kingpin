@@ -216,6 +216,12 @@ func (f *FlagClause) init() error {
 	return nil
 }
 
+// Help redefines the help text already associated to a flag.
+func (f *FlagClause) Help(help string) *FlagClause {
+	f.help = help
+	return f
+}
+
 // Dispatch to the given function after the flag is parsed and validated.
 func (f *FlagClause) Action(action Action) *FlagClause {
 	f.addAction(action)
