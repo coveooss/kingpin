@@ -34,6 +34,37 @@ func (f *flagGroup) Flag(name, help string) *FlagClause {
 	return flag
 }
 
+// GetNames returns the list of flag names in declared order.
+func (f *flagGroup) GetNames() (result []string) {
+	for i := range f.flagOrder {
+		result = append(result, f.flagOrder[i].name)
+	}
+	return
+}
+
+// DeleteFlag removes a flag from a flag group.
+func (f *flagGroup) DeleteFlag(name string) error {
+	flag := f.GetFlag(name)
+	if flag == nil {
+		return fmt.Errorf("Flag %s does not exist", name)
+	}
+	delete(f.long, name)
+
+	// We find all the matches in the flagOrder list (a flag could have been defined more that once)
+	var matches []int
+	for i := range f.flagOrder {
+		if f.flagOrder[i].name == name {
+			matches = append(matches, i)
+		}
+	}
+	// We delete all found occurrences (starting with the last one)
+	for i := len(matches) - 1; i >= 0; i-- {
+		f.flagOrder = append(f.flagOrder[:matches[i]], f.flagOrder[matches[i]+1:]...)
+	}
+
+	return nil
+}
+
 func (f *flagGroup) init(defaultEnvarPrefix string) error {
 	if err := f.checkDuplicates(); err != nil {
 		return err
