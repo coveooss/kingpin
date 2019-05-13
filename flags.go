@@ -211,14 +211,13 @@ func (f *FlagClause) setDefault() error {
 		if v, ok := f.value.(repeatableFlag); !ok || !v.IsCumulative() {
 			// Use the value as-is
 			return f.value.Set(f.GetEnvarValue())
-		} else {
-			for _, value := range f.GetSplitEnvarValue() {
-				if err := f.value.Set(value); err != nil {
-					return err
-				}
-			}
-			return nil
 		}
+		for _, value := range f.GetSplitEnvarValue() {
+			if err := f.value.Set(value); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 
 	if len(f.defaultValues) > 0 {
@@ -263,7 +262,7 @@ func (f *FlagClause) Help(help string) *FlagClause {
 	return f
 }
 
-// Dispatch to the given function after the flag is parsed and validated.
+// Action dispatches to the given function after the flag is parsed and validated.
 func (f *FlagClause) Action(action Action) *FlagClause {
 	if action == nil {
 		f.actions = nil
@@ -272,6 +271,7 @@ func (f *FlagClause) Action(action Action) *FlagClause {
 	return f
 }
 
+// PreAction called after parsing completes but before validation and execution.
 func (f *FlagClause) PreAction(action Action) *FlagClause {
 	if action == nil {
 		f.preActions = nil
@@ -280,7 +280,7 @@ func (f *FlagClause) PreAction(action Action) *FlagClause {
 	return f
 }
 
-// HintAction registers a HintAction (function) for the flag to provide completions
+// HintAction registers a HintAction (function) for the flag to provide completions.
 func (a *FlagClause) HintAction(action HintAction) *FlagClause {
 	if action == nil {
 		a.hintActions = nil
@@ -289,26 +289,28 @@ func (a *FlagClause) HintAction(action HintAction) *FlagClause {
 	return a
 }
 
-// HintOptions registers any number of options for the flag to provide completions
-func (a *FlagClause) HintOptions(options ...string) *FlagClause {
-	a.addHintAction(func() []string {
+// HintOptions registers any number of options for the flag to provide completions.
+func (f *FlagClause) HintOptions(options ...string) *FlagClause {
+	f.addHintAction(func() []string {
 		return options
 	})
-	return a
+	return f
 }
 
-func (a *FlagClause) EnumVar(target *string, options ...string) {
-	a.parserMixin.EnumVar(target, options...)
-	a.addHintActionBuiltin(func() []string {
+// EnumVar associates this flag a string variable (with valid options).
+func (f *FlagClause) EnumVar(target *string, options ...string) {
+	f.parserMixin.EnumVar(target, options...)
+	f.addHintActionBuiltin(func() []string {
 		return options
 	})
 }
 
-func (a *FlagClause) Enum(options ...string) (target *string) {
-	a.addHintActionBuiltin(func() []string {
+// Enum makes this flag a string variable (with valid options).
+func (f *FlagClause) Enum(options ...string) (target *string) {
+	f.addHintActionBuiltin(func() []string {
 		return options
 	})
-	return a.parserMixin.Enum(options...)
+	return f.parserMixin.Enum(options...)
 }
 
 // IsSetByUser let to know if the flag was set by the user
@@ -330,6 +332,7 @@ func (f *FlagClause) Default(values ...interface{}) *FlagClause {
 	return f
 }
 
+// OverrideDefaultFromEnvar acts exactly as Envar.
 // DEPRECATED: Use Envar(name) instead.
 func (f *FlagClause) OverrideDefaultFromEnvar(envar string) *FlagClause {
 	return f.Envar(envar)

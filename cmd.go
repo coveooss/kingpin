@@ -211,9 +211,10 @@ func (c *cmdGroup) have() bool {
 	return len(c.commands) > 0
 }
 
+// CmdClauseValidator is the function prototype used to validate clauses.
 type CmdClauseValidator func(*CmdClause) error
 
-// A CmdClause is a single top-level command. It encapsulates a set of flags
+// CmdClause is a single top-level command. It encapsulates a set of flags
 // and either subcommands or positional arguments.
 type CmdClause struct {
 	cmdMixin
@@ -240,7 +241,7 @@ func newCommand(app *Application, name, help string) *CmdClause {
 	return c
 }
 
-// Add an Alias for this command.
+// Alias adds an alias for this command.
 func (c *CmdClause) Alias(name string) *CmdClause {
 	c.aliases = append(c.aliases, name)
 	return c
@@ -263,6 +264,7 @@ func (c *CmdClause) Validate(validator CmdClauseValidator) *CmdClause {
 	return c
 }
 
+// FullCommand returns the complete command that should be used to access this command clause.
 func (c *CmdClause) FullCommand() string {
 	out := []string{c.name}
 	for p := c.parent; p != nil; p = p.parent {
@@ -285,6 +287,7 @@ func (c *CmdClause) Default() *CmdClause {
 	return c
 }
 
+// Action called after parsing and validation are completed.
 func (c *CmdClause) Action(action Action) *CmdClause {
 	if action == nil {
 		c.actions = nil
@@ -293,6 +296,7 @@ func (c *CmdClause) Action(action Action) *CmdClause {
 	return c
 }
 
+// PreAction called after parsing completes but before validation and execution.
 func (c *CmdClause) PreAction(action Action) *CmdClause {
 	if action == nil {
 		c.preActions = nil
@@ -317,6 +321,7 @@ func (c *CmdClause) init() error {
 	return nil
 }
 
+// Hidden indicates that this command should not be displayed by help.
 func (c *CmdClause) Hidden() *CmdClause {
 	c.hidden = true
 	return c

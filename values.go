@@ -167,12 +167,12 @@ func newIPValue(p *net.IP) *ipValue {
 }
 
 func (i *ipValue) Set(value string) error {
-	if ip := net.ParseIP(value); ip == nil {
+	var ip net.IP
+	if ip = net.ParseIP(value); ip == nil {
 		return fmt.Errorf("'%s' is not an IP address", value)
-	} else {
-		*i = *(*ipValue)(&ip)
-		return nil
 	}
+	*i = *(*ipValue)(&ip)
+	return nil
 }
 
 func (i *ipValue) Get() interface{} {
@@ -193,16 +193,16 @@ func newTCPAddrValue(p **net.TCPAddr) *tcpAddrValue {
 }
 
 func (i *tcpAddrValue) Set(value string) error {
-	if addr, err := net.ResolveTCPAddr("tcp", value); err != nil {
+	addr, err := net.ResolveTCPAddr("tcp", value)
+	if err != nil {
 		return fmt.Errorf("'%s' is not a valid TCP address: %s", value, err)
-	} else {
-		*i.addr = addr
-		return nil
 	}
+	*i.addr = addr
+	return nil
 }
 
-func (t *tcpAddrValue) Get() interface{} {
-	return (*net.TCPAddr)(*t.addr)
+func (i *tcpAddrValue) Get() interface{} {
+	return (*net.TCPAddr)(*i.addr)
 }
 
 func (i *tcpAddrValue) String() string {
@@ -235,8 +235,8 @@ func (e *fileStatValue) Set(value string) error {
 	return nil
 }
 
-func (f *fileStatValue) Get() interface{} {
-	return (string)(*f.path)
+func (e *fileStatValue) Get() interface{} {
+	return (string)(*e.path)
 }
 
 func (e *fileStatValue) String() string {
@@ -256,12 +256,12 @@ func newFileValue(p **os.File, flag int, perm os.FileMode) *fileValue {
 }
 
 func (f *fileValue) Set(value string) error {
-	if fd, err := os.OpenFile(value, f.flag, f.perm); err != nil {
+	fd, err := os.OpenFile(value, f.flag, f.perm)
+	if err != nil {
 		return err
-	} else {
-		*f.f = fd
-		return nil
 	}
+	*f.f = fd
+	return nil
 }
 
 func (f *fileValue) Get() interface{} {
@@ -285,12 +285,12 @@ func newURLValue(p **url.URL) *urlValue {
 }
 
 func (u *urlValue) Set(value string) error {
-	if url, err := url.Parse(value); err != nil {
+	url, err := url.Parse(value)
+	if err != nil {
 		return fmt.Errorf("invalid URL: %s", err)
-	} else {
-		*u.u = url
-		return nil
 	}
+	*u.u = url
+	return nil
 }
 
 func (u *urlValue) Get() interface{} {
@@ -312,12 +312,12 @@ func newURLListValue(p *[]*url.URL) *urlListValue {
 }
 
 func (u *urlListValue) Set(value string) error {
-	if url, err := url.Parse(value); err != nil {
+	url, err := url.Parse(value)
+	if err != nil {
 		return fmt.Errorf("invalid URL: %s", err)
-	} else {
-		*u = append(*u, url)
-		return nil
 	}
+	*u = append(*u, url)
+	return nil
 }
 
 func (u *urlListValue) Get() interface{} {
@@ -363,8 +363,8 @@ func (a *enumValue) Set(value string) error {
 	return fmt.Errorf("enum value must be one of %s, got '%s'", strings.Join(a.options, ","), value)
 }
 
-func (e *enumValue) Get() interface{} {
-	return (string)(*e.value)
+func (a *enumValue) Get() interface{} {
+	return (string)(*a.value)
 }
 
 // -- []string Enum Value
@@ -390,8 +390,8 @@ func (s *enumsValue) Set(value string) error {
 	return fmt.Errorf("enum value must be one of %s, got '%s'", strings.Join(s.options, ","), value)
 }
 
-func (e *enumsValue) Get() interface{} {
-	return ([]string)(*e.value)
+func (s *enumsValue) Get() interface{} {
+	return ([]string)(*s.value)
 }
 
 func (s *enumsValue) String() string {
@@ -458,13 +458,13 @@ func (c *counterValue) String() string     { return fmt.Sprintf("%d", *c) }
 func (c *counterValue) IsCumulative() bool { return true }
 
 func resolveHost(value string) (net.IP, error) {
-	if ip := net.ParseIP(value); ip != nil {
+	ip := net.ParseIP(value)
+	if ip != nil {
 		return ip, nil
-	} else {
-		if addr, err := net.ResolveIPAddr("ip", value); err != nil {
-			return nil, err
-		} else {
-			return addr.IP, nil
-		}
 	}
+	addr, err := net.ResolveIPAddr("ip", value)
+	if err != nil {
+		return nil, err
+	}
+	return addr.IP, nil
 }

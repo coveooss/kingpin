@@ -1,6 +1,6 @@
 package kingpin
 
-// Default usage template.
+// DefaultUsageTemplate is the default usage template.
 var DefaultUsageTemplate = `{{define "FormatCommand"}}\
 {{if .FlagSummary}} {{.FlagSummary}}{{end}}\
 {{range .Args}} {{if not .Required}}[{{end}}<{{.Name}}>{{if .Value|IsCumulative}}...{{end}}{{if not .Required}}]{{end}}{{end}}\
@@ -47,7 +47,7 @@ Commands:
 {{end}}\
 `
 
-// Usage template where command's optional flags are listed separately
+// SeparateOptionalFlagsUsageTemplate is a usage template where command's optional flags are listed separately
 var SeparateOptionalFlagsUsageTemplate = `{{define "FormatCommand"}}\
 {{if .FlagSummary}} {{.FlagSummary}}{{end}}\
 {{range .Args}} {{if not .Required}}[{{end}}<{{.Name}}>{{if .Value|IsCumulative}}...{{end}}{{if not .Required}}]{{end}}{{end}}\
@@ -98,7 +98,7 @@ Commands:
 {{end}}\
 `
 
-// Usage template with compactly formatted commands.
+// CompactUsageTemplate is the usage template with compactly formatted commands.
 var CompactUsageTemplate = `{{define "FormatCommand"}}\
 {{if .FlagSummary}} {{.FlagSummary}}{{end}}\
 {{range .Args}} {{if not .Required}}[{{end}}<{{.Name}}>{{if .Value|IsCumulative}}...{{end}}{{if not .Required}}]{{end}}{{end}}\
@@ -146,6 +146,7 @@ Commands:
 {{end}}\
 `
 
+// ManPageTemplate is the template used go generate man page.
 var ManPageTemplate = `{{define "FormatFlags"}}\
 {{range .Flags}}\
 {{if not .Hidden}}\
@@ -193,7 +194,7 @@ var ManPageTemplate = `{{define "FormatFlags"}}\
 {{end}}\
 `
 
-// Default usage template.
+// LongHelpTemplate is the template used go generate long help.
 var LongHelpTemplate = `{{define "FormatCommand"}}\
 {{if .FlagSummary}} {{.FlagSummary}}{{end}}\
 {{range .Args}} {{if not .Required}}[{{end}}<{{.Name}}>{{if .Value|IsCumulative}}...{{end}}{{if not .Required}}]{{end}}{{end}}\
@@ -232,6 +233,7 @@ Commands:
 {{end}}\
 `
 
+// BashCompletionTemplate is the template used go generate bash completion.
 var BashCompletionTemplate = `
 _{{.App.Name}}_bash_autocomplete() {
     local cur prev opts base
@@ -245,6 +247,7 @@ complete -F _{{.App.Name}}_bash_autocomplete -o default {{.App.Name}}
 
 `
 
+// ZshCompletionTemplate is the template used go generate zsh completion.
 var ZshCompletionTemplate = `
 #compdef {{.App.Name}}
 
