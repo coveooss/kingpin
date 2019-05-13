@@ -87,16 +87,17 @@ type ParseElement struct {
 // *ArgClause and *CmdClause values and their corresponding arguments (if
 // any).
 type ParseContext struct {
-	SelectedCommand *CmdClause
-	ignoreDefault   bool
-	argsOnly        bool
-	peek            []*Token
-	argi            int // Index of current command-line arg we're processing.
-	args            []string
-	rawArgs         []string
-	flags           *flagGroup
-	arguments       *argGroup
-	argumenti       int // Cursor into arguments
+	SelectedCommand  *CmdClause
+	ignoreDefault    bool
+	argsOnly         bool
+	peek             []*Token
+	argi             int // Index of current command-line arg we're processing.
+	args             []string
+	rawArgs          []string
+	flags            *flagGroup
+	arguments        *argGroup
+	argumenti        int          // Cursor into arguments
+	appUnmanagedArgs *Application // Only set if AllowUnmanaged is set
 	// Flags, arguments and commands encountered and collected during parse.
 	Elements []*ParseElement
 }
@@ -252,6 +253,15 @@ func (p *ParseContext) pop() *Token {
 	return token
 }
 
+// Returns the current evaluated raw argument
+func (p *ParseContext) current() string {
+	pos := len(p.rawArgs) - len(p.args)
+	if len(p.args) == 0 || p.rawArgs[pos] == p.args[0] {
+		return p.rawArgs[pos-1]
+	}
+	return p.rawArgs[pos]
+}
+
 func (p *ParseContext) String() string {
 	return p.SelectedCommand.FullCommand()
 }
@@ -366,6 +376,12 @@ loop:
 				context.matchedArg(arg, token.String())
 				context.Next()
 			} else {
+				if context.appUnmanagedArgs != nil {
+					context.appUnmanagedArgs.Unmanaged = append(context.appUnmanagedArgs.Unmanaged, context.current())
+					context.Next()
+					continue
+				}
+
 				break loop
 			}
 

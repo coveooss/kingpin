@@ -2,6 +2,7 @@ package kingpin
 
 import (
 	"fmt"
+	"strings"
 )
 
 type flagGroup struct {
@@ -104,13 +105,11 @@ func (f *flagGroup) checkDuplicates() error {
 
 func (f *flagGroup) parse(context *ParseContext) (*FlagClause, error) {
 	var token *Token
-
-loop:
 	for {
 		token = context.Peek()
 		switch token.Type {
 		case TokenEOL:
-			break loop
+			return nil, nil
 
 		case TokenLong, TokenShort:
 			flagToken := token
@@ -125,14 +124,37 @@ loop:
 				if flag, invert, err = f.getFlagAlias(name); err != nil {
 					return nil, err
 				} else if flag == nil {
-					return nil, fmt.Errorf("unknown long flag '%s'", flagToken)
+					err = fmt.Errorf("unknown long flag '%s'", flagToken)
 				}
 			} else if flag, ok = f.short[name]; !ok {
-				return nil, fmt.Errorf("unknown short flag '%s'", flagToken)
+				err = fmt.Errorf("unknown short flag '%s'", flagToken)
+			}
+
+			if err != nil {
+				if context.appUnmanagedArgs == nil {
+					return nil, err
+				}
+				current := context.current()
+				if token.Type == TokenLong {
+					context.Next()
+				} else {
+					// We have to remove all previous elements from the same short flag element
+					pos := strings.Index(current, token.Value) - 1
+					if pos < 0 {
+						return nil, err
+					}
+					context.argi -= pos
+					context.Elements = context.Elements[:len(context.Elements)-pos]
+					for x := len(current) - pos - 1; x > 0; x-- {
+						// We skip all remaining elements of the group
+						context.Next()
+					}
+				}
+				context.appUnmanagedArgs.Unmanaged = append(context.appUnmanagedArgs.Unmanaged, current)
+				return nil, nil
 			}
 
 			context.Next()
-
 			flag.isSetByUser()
 
 			if fb, ok := flag.value.(boolFlag); ok && fb.IsBoolFlag() {
@@ -155,10 +177,9 @@ loop:
 			return flag, nil
 
 		default:
-			break loop
+			return nil, nil
 		}
 	}
-	return nil, nil
 }
 
 // FlagClause is a fluid interface used to build flags.

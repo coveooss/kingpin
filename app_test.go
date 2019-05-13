@@ -3,6 +3,7 @@ package kingpin
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"unicode"
 
 	"github.com/stretchr/testify/assert"
@@ -563,6 +564,140 @@ func TestShortcuts(t *testing.T) {
 			assert.Equal(t, c.expect1, a.o1, "option-one")
 			assert.Equal(t, c.expect2, a.o2, "option-two")
 			assert.Equal(t, c.expect3, a.o3, "option-three")
+		})
+	}
+}
+
+func TestUnmanaged(t *testing.T) {
+	type app struct {
+		*Application
+		b []bool
+		s []string
+	}
+	newApp := func() *app {
+		const nbElements = 5
+		a := app{
+			Application: newTestApp(),
+			b:           make([]bool, nbElements),
+			s:           make([]string, nbElements),
+		}
+		for i := 0; i < nbElements; i++ {
+			a.Flag(fmt.Sprintf("bool-%d", i+1), "").Short(rune('a' + i)).BoolVar(&a.b[i])
+			a.Flag(fmt.Sprintf("string-%d", i+1), "").Short(rune('A' + i)).StringVar(&a.s[i])
+		}
+		return &a
+	}
+	cases := []struct {
+		name            string
+		managed         bool
+		args            string
+		expectB         []bool
+		expectS         []string
+		expectUnmanaged []string
+		expectErr       error
+	}{
+		{"All shorts", false, "-abcde -ABCDE",
+			[]bool{true, true, true, true, true},
+			[]string{"BCDE", "", "", "", ""},
+			nil, nil},
+		{"Normal", false, "--bool-1 --bool-3 -e --string-2=x -Dy",
+			[]bool{true, false, true, false, true},
+			[]string{"", "x", "", "y", ""},
+			nil, nil},
+		{"Mixed", true, "xxx --bA --test abc -Abc --string-3=test -s x zzz",
+			[]bool{false, false, false, false, false},
+			[]string{"bc", "", "test", "", ""},
+			[]string{"xxx", "--bA", "--test", "abc", "-s", "x", "zzz"}, nil},
+		{"Error", false, "xxx -b",
+			[]bool{false, false, false, false, false},
+			[]string{"", "", "", "", ""},
+			nil, fmt.Errorf("unexpected xxx")},
+		{"Remaining args", true, "-b -- -sx --test",
+			[]bool{false, true, false, false, false},
+			[]string{"", "", "", "", ""},
+			[]string{"-sx", "--test"}, nil},
+		{"Bad switch", true, "-abcdef -ABCDEF",
+			[]bool{false, false, false, false, false},
+			[]string{"BCDEF", "", "", "", ""},
+			[]string{"-abcdef"}, nil},
+		{"Bad switch end", true, "-abcdeX",
+			[]bool{false, false, false, false, false},
+			[]string{"", "", "", "", ""},
+			[]string{"-abcdeX"}, nil},
+		{"Bad switch mixed", true, "-ab -cX -de",
+			[]bool{true, true, false, true, true},
+			[]string{"", "", "", "", ""},
+			[]string{"-cX"}, nil},
+		{"Many bad switches with args", true, "-ab -var x=1 -var y=2 -de -var z=3 test",
+			[]bool{true, true, false, true, true},
+			[]string{"", "", "", "", ""},
+			[]string{"-var", "x=1", "-var", "y=2", "-var", "z=3", "test"}, nil},
+		{"Incomplete switch", true, "-",
+			[]bool{false, false, false, false, false},
+			[]string{"", "", "", "", ""},
+			nil, fmt.Errorf("unknown short flag '-'")},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			assert.NotPanics(t, func() {
+				a := newApp()
+				if c.managed {
+					a.AllowUnmanaged()
+				}
+				_, err := a.Parse(split(c.args))
+				if c.expectErr == nil {
+					assert.NoError(t, err)
+				} else {
+					assert.EqualError(t, err, c.expectErr.Error())
+				}
+				assert.Equal(t, c.expectB, a.b, "bool(s)")
+				assert.Equal(t, c.expectS, a.s, "string(s)")
+				assert.Equal(t, c.expectUnmanaged, a.Unmanaged, "Unmanaged")
+			})
+		})
+	}
+}
+
+func TestCompletion(t *testing.T) {
+	type app struct {
+		*Application
+		b []bool
+		s []string
+	}
+	newApp := func() *app {
+		const nbElements = 5
+		a := app{
+			Application: newTestApp(),
+			b:           make([]bool, nbElements),
+			s:           make([]string, nbElements),
+		}
+		for i := 0; i < nbElements; i++ {
+			a.Flag(fmt.Sprintf("bool-%d", i+1), "").Short(rune('a' + i)).BoolVar(&a.b[i])
+			a.Flag(fmt.Sprintf("string-%d", i+1), "").Short(rune('A' + i)).StringVar(&a.s[i])
+		}
+		return &a
+	}
+	cases := []struct {
+		name string
+		args string
+	}{
+		{"All args", "--completion-bash test --"},
+		{"Not existing arg", "--completion-bash test a"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			assert.NotPanics(t, func() {
+				func() {
+					stdout := os.Stdout
+					defer func() { os.Stdout = stdout }()
+					null, _ := os.Open(os.DevNull)
+					os.Stdout = null
+					a := newApp().UsageWriter(os.Stderr)
+					_, err := a.Parse(strings.Split(c.args, " "))
+					assert.NoError(t, err)
+				}()
+			})
 		})
 	}
 }
