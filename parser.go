@@ -261,11 +261,12 @@ func (p *ParseContext) matchedArg(arg *ArgClause, value string) {
 	p.Elements = append(p.Elements, &ParseElement{Clause: arg, Value: &value})
 }
 
-func (p *ParseContext) matchedCmd(cmd *CmdClause) {
+func (p *ParseContext) matchedCmd(cmd *CmdClause) error {
 	p.Elements = append(p.Elements, &ParseElement{Clause: cmd})
 	p.mergeFlags(cmd.flagGroup)
 	p.mergeArgs(cmd.argGroup)
 	p.SelectedCommand = cmd
+	return p.flags.resetAliases()
 }
 
 // Expand arguments from a file. Lines starting with # will be treated as comments.
@@ -296,6 +297,7 @@ func ExpandArgsFromFile(filename string) (out []string, err error) {
 func parse(context *ParseContext, app *Application) (err error) {
 	context.mergeFlags(app.flagGroup)
 	context.mergeArgs(app.argGroup)
+	context.flags.resetAliases()
 
 	cmds := app.cmdGroup
 	ignoreDefault := context.ignoreDefault
@@ -307,10 +309,12 @@ loop:
 		switch token.Type {
 		case TokenLong, TokenShort:
 			if flag, err := context.flags.parse(context); err != nil {
-				if !ignoreDefault {
+				if _, parseError := err.(aliasError); !parseError && !ignoreDefault {
 					if cmd := cmds.defaultSubcommand(); cmd != nil {
 						cmd.completionAlts = cmds.cmdNames()
-						context.matchedCmd(cmd)
+						if err := context.matchedCmd(cmd); err != nil {
+							return err
+						}
 						cmds = cmd.cmdGroup
 						break
 					}
@@ -339,7 +343,10 @@ loop:
 					ignoreDefault = true
 				}
 				cmd.completionAlts = nil
-				context.matchedCmd(cmd)
+				if err := context.matchedCmd(cmd); err != nil {
+					return err
+				}
+
 				cmds = cmd.cmdGroup
 				if !selectedDefault {
 					context.Next()
@@ -368,7 +375,9 @@ loop:
 	for !ignoreDefault {
 		if cmd := cmds.defaultSubcommand(); cmd != nil {
 			cmd.completionAlts = cmds.cmdNames()
-			context.matchedCmd(cmd)
+			if err := context.matchedCmd(cmd); err != nil {
+				return err
+			}
 			cmds = cmd.cmdGroup
 		} else {
 			break

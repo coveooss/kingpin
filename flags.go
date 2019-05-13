@@ -2,12 +2,12 @@ package kingpin
 
 import (
 	"fmt"
-	"strings"
 )
 
 type flagGroup struct {
 	short     map[string]*FlagClause
 	long      map[string]*FlagClause
+	aliases   map[string]flagAlias
 	flagOrder []*FlagClause
 }
 
@@ -116,44 +116,31 @@ loop:
 			defaultValue := ""
 			var flag *FlagClause
 			var ok bool
+			var err error
 			invert := false
 
 			name := token.Value
 			if token.Type == TokenLong {
-				flag, ok = f.long[name]
-				if !ok {
-					if strings.HasPrefix(name, "no-") {
-						name = name[3:]
-						invert = true
-					}
-					flag, ok = f.long[name]
-				}
-				if !ok {
+				if flag, invert, err = f.getFlagAlias(name); err != nil {
+					return nil, err
+				} else if flag == nil {
 					return nil, fmt.Errorf("unknown long flag '%s'", flagToken)
 				}
-			} else {
-				flag, ok = f.short[name]
-				if !ok {
-					return nil, fmt.Errorf("unknown short flag '%s'", flagToken)
-				}
+			} else if flag, ok = f.short[name]; !ok {
+				return nil, fmt.Errorf("unknown short flag '%s'", flagToken)
 			}
 
 			context.Next()
 
 			flag.isSetByUser()
 
-			fb, ok := flag.value.(boolFlag)
-			if ok && fb.IsBoolFlag() {
+			if fb, ok := flag.value.(boolFlag); ok && fb.IsBoolFlag() {
 				if invert {
 					defaultValue = "false"
 				} else {
 					defaultValue = "true"
 				}
 			} else {
-				if invert {
-					context.Push(token)
-					return nil, fmt.Errorf("unknown long flag '%s'", flagToken)
-				}
 				token = context.Peek()
 				if token.Type != TokenArg {
 					context.Push(token)
@@ -179,6 +166,7 @@ type FlagClause struct {
 	actionMixin
 	completionsMixin
 	envarMixin
+	aliasMixin
 	name          string
 	shorthand     rune
 	help          string
