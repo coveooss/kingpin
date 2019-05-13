@@ -234,6 +234,7 @@ func newCommand(app *Application, name, help string) *CmdClause {
 		help: help,
 	}
 	c.flagGroup = newFlagGroup()
+	c.setAutoShortcut(app.autoShortcut)
 	c.argGroup = newArgGroup()
 	c.cmdGroup = newCmdGroup(app)
 	return c
@@ -242,6 +243,17 @@ func newCommand(app *Application, name, help string) *CmdClause {
 // Add an Alias for this command.
 func (c *CmdClause) Alias(name string) *CmdClause {
 	c.aliases = append(c.aliases, name)
+	return c
+}
+
+// AutoShortcut enables automatic shortcut for this flag (overriding the flag group setting).
+func (c *CmdClause) AutoShortcut() *CmdClause { return c.setAutoShortcut(true) }
+
+// NoAutoShortcut disables automatic shortcut for this flag (overriding the flag group setting).
+func (c *CmdClause) NoAutoShortcut() *CmdClause { return c.setAutoShortcut(false) }
+
+func (c *CmdClause) setAutoShortcut(value bool) *CmdClause {
+	c.autoShortcut = value
 	return c
 }
 
@@ -263,6 +275,7 @@ func (c *CmdClause) FullCommand() string {
 func (c *CmdClause) Command(name, help string) *CmdClause {
 	cmd := c.addCommand(name, help)
 	cmd.parent = c
+	cmd.autoShortcut = c.autoShortcut
 	return cmd
 }
 

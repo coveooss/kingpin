@@ -2,10 +2,12 @@ package kingpin
 
 import (
 	"fmt"
+	"strings"
 )
 
 type aliasMixin struct {
-	aliases map[string]aliasKind
+	aliases      map[string]aliasKind
+	autoShortcut *bool // Only set if explicitly configured
 }
 
 type flagAlias struct {
@@ -19,17 +21,28 @@ const (
 	aliasNone aliasKind = iota
 	aliasName
 	aliasNegative
+	aliasShortcut
 )
 
 // Alias defines alias name that could be used instead of the long name.
 func (f *FlagClause) Alias(aliases ...string) *FlagClause {
 	if aliases == nil {
-		// If supplied alias is nil, we clear the previously defined aliases
-		f.aliases = nil
+		f.aliases = nil // If supplied alias is nil, we clear the previously defined aliases
 	}
 	for _, alias := range aliases {
 		f.addAlias(alias, aliasName)
 	}
+	return f
+}
+
+// AutoShortcut enables automatic shortcut for this flag (overriding the flag group setting).
+func (f *FlagClause) AutoShortcut() *FlagClause { return f.setAutoShortcut(true) }
+
+// NoAutoShortcut disables automatic shortcut for this flag (overriding the flag group setting).
+func (f *FlagClause) NoAutoShortcut() *FlagClause { return f.setAutoShortcut(false) }
+
+func (f *FlagClause) setAutoShortcut(value bool) *FlagClause {
+	f.autoShortcut = &value
 	return f
 }
 
@@ -49,12 +62,12 @@ type aliasGroupMixin struct{}
 
 // This function find the corresponding flag either by name or though aliases.
 // If the resulted flag correspond to a negative alias (-no-boolOption), invert is set to true
-func (f *flagGroup) getFlagAlias(name string) (flag *FlagClause, invert bool, err error) {
-	if err = f.ensureAliases(); err != nil {
+func (fg *flagGroup) getFlagAlias(name string) (flag *FlagClause, invert bool, err error) {
+	if err = fg.ensureAliases(); err != nil {
 		return
-	} else if flag = f.long[name]; flag != nil {
+	} else if flag = fg.long[name]; flag != nil {
 		return
-	} else if alias := f.aliases[name]; alias.kind != aliasNone {
+	} else if alias := fg.aliases[name]; alias.kind != aliasNone {
 		flag = alias.FlagClause
 		invert = alias.kind == aliasNegative
 	}
@@ -63,26 +76,35 @@ func (f *flagGroup) getFlagAlias(name string) (flag *FlagClause, invert bool, er
 
 // Clear the aliases and regenerate it.
 // Used when the ParseContext change to a sub command.
-func (f *flagGroup) resetAliases() error {
-	f.aliases = nil
-	return f.ensureAliases()
+func (fg *flagGroup) resetAliases() error {
+	fg.aliases = nil
+	return fg.ensureAliases()
 }
 
 // Ensure that the aliases are evaluated.
 // Called during the parsing since we do not know the nature of flags until we launch the parsing.
-func (f *flagGroup) ensureAliases() error {
-	if f.aliases != nil {
+func (fg *flagGroup) ensureAliases() error {
+	if fg.aliases != nil {
 		return nil
 	}
 	// The alias map is not yet initialized, so we do it
-	f.aliases = make(map[string]flagAlias)
+	fg.aliases = make(map[string]flagAlias)
 
-	for _, flag := range f.flagOrder {
-		if err := f.addNegativeAlias(flag.name, flag, aliasNone); err != nil {
+	for _, flag := range fg.flagOrder {
+		if err := fg.addShortcut(flag.name, flag); err != nil {
+			return err
+		}
+		if err := fg.addNegativeAlias(flag.name, flag, aliasNone); err != nil {
 			return err
 		}
 		for alias, kind := range flag.aliases {
-			if err := f.addAlias(alias, flag, kind); err != nil {
+			if kind != aliasName {
+				continue
+			}
+			if err := fg.addGroupAlias(alias, flag, kind); err != nil {
+				return err
+			}
+			if err := fg.addShortcut(alias, flag); err != nil {
 				return err
 			}
 		}
@@ -91,30 +113,54 @@ func (f *flagGroup) ensureAliases() error {
 }
 
 // Add an alias to the current flag group and return an error if the alias conflict with another flag.
-func (f *flagGroup) addAlias(name string, flag *FlagClause, kind aliasKind) error {
-	if existing := f.long[name]; existing != nil {
+func (fg *flagGroup) addGroupAlias(name string, flag *FlagClause, kind aliasKind) error {
+	if existing := fg.long[name]; existing != nil {
 		return aliasErrorf("Alias %s on %s is already associated to flag %s", name, flag.name, existing.name)
 	}
-	if alias := f.aliases[name]; alias.kind != aliasNone && (alias.kind != kind || alias.FlagClause != flag) {
+	if alias := fg.aliases[name]; alias.kind != aliasNone && (alias.kind != kind || alias.FlagClause != flag) {
 		return aliasErrorf("Alias %s on %s is already associated to flag %s", name, flag.name, alias.name)
 	}
-	if err := f.addNegativeAlias(name, flag, kind); err != nil {
+	if err := fg.addNegativeAlias(name, flag, kind); err != nil {
 		return err
 	}
 
-	f.aliases[name] = flagAlias{FlagClause: flag, kind: kind}
+	fg.aliases[name] = flagAlias{FlagClause: flag, kind: kind}
+	if err := flag.addAlias(name, kind); err != nil {
+		return aliasErrorf("Unable to add alias %s to %s: %v", name, flag.name, err)
+	}
 	return nil
 }
 
-// If the flag is a boolFlag, add its negative counterpart.
-func (f *flagGroup) addNegativeAlias(name string, flag *FlagClause, kind aliasKind) error {
-	switch kind {
-	case aliasNegative:
+func (fg *flagGroup) addShortcut(name string, flag *FlagClause) error {
+	if flag.autoShortcut == nil {
+		flag.autoShortcut = &fg.autoShortcut
+	}
+	if !*flag.autoShortcut || flag.shorthand != 0 && !strings.Contains(name, "-") {
+		// We do not add single letter shortcut for flag that already have a shorthand
 		return nil
 	}
-	if fb, isSwitch := flag.value.(boolFlag); isSwitch && fb.IsBoolFlag() {
-		if err := f.addAlias("no-"+name, flag, aliasNegative); err != nil {
+
+	var shortcut string
+	for _, word := range strings.Split(name, "-") {
+		shortcut += string(word[0])
+	}
+	if err := fg.addGroupAlias(shortcut, flag, aliasShortcut); err != nil {
+		return err
+	}
+	return fg.addNegativeAlias(shortcut, flag, aliasShortcut)
+}
+
+// If the flag is a boolFlag, add its negative counterpart.
+func (fg *flagGroup) addNegativeAlias(name string, flag *FlagClause, kind aliasKind) error {
+	if fb, isSwitch := flag.value.(boolFlag); kind != aliasNegative && isSwitch && fb.IsBoolFlag() {
+		if err := fg.addGroupAlias("no-"+name, flag, aliasNegative); err != nil {
 			return err
+		}
+		if len(name) <= 3 && !strings.Contains(name, "-") {
+			// For short single word name, we also negative form simply prefixed by a n
+			if err := fg.addGroupAlias("n"+name, flag, aliasNegative); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

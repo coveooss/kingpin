@@ -5,10 +5,11 @@ import (
 )
 
 type flagGroup struct {
-	short     map[string]*FlagClause
-	long      map[string]*FlagClause
-	aliases   map[string]flagAlias
-	flagOrder []*FlagClause
+	short        map[string]*FlagClause
+	long         map[string]*FlagClause
+	aliases      map[string]flagAlias
+	flagOrder    []*FlagClause
+	autoShortcut bool
 }
 
 func newFlagGroup() *flagGroup {

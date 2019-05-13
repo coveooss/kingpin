@@ -188,6 +188,7 @@ func (a *Application) parseContext(ignoreDefault bool, args []string) (*ParseCon
 		return nil, err
 	}
 	context := tokenize(args, ignoreDefault)
+	context.flags.autoShortcut = a.autoShortcut
 	err := parse(context, a)
 	return context, err
 }
@@ -330,6 +331,12 @@ func (a *Application) InitOnlyOnce() *Application {
 
 // ResetInitOnlyOnce instructs the Parser to reevaluate the default values on the next parsing.
 func (a *Application) ResetInitOnlyOnce() { a.initMode = initDisabledOnMultipleParse }
+
+// AutoShortcut enables automatic creation of aliases based on the first letter of each long-options.
+func (a *Application) AutoShortcut() *Application {
+	a.autoShortcut = true
+	return a
+}
 
 func (a *Application) defaultEnvarPrefix() string {
 	if a.defaultEnvars {
