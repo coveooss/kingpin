@@ -39,6 +39,7 @@ type Application struct {
 	noInterspersed bool             // can flags be interspersed with args (or must they come first)
 	defaultEnvars  bool
 	completion     bool
+	initMode       initMode
 
 	// Help flag. Exposed for user customisation.
 	HelpFlag *FlagClause
@@ -47,6 +48,15 @@ type Application struct {
 	// Version flag. Exposed for user customisation. May be nil.
 	VersionFlag *FlagClause
 }
+
+// Defines the behaviour when Parse is called multiple time on the same application
+type initMode byte
+
+const (
+	initOnEachParse initMode = iota
+	initDisabledOnMultipleParse
+	initDisabled
+)
 
 // New creates a new Kingpin application instance.
 func New(name, help string) *Application {
@@ -306,6 +316,15 @@ func (a *Application) Interspersed(interspersed bool) *Application {
 	return a
 }
 
+// InitOnlyOnce instructs the Parser to remove the default initialization from Env vars or default on subsequent invocation.
+func (a *Application) InitOnlyOnce() *Application {
+	a.initMode = initDisabledOnMultipleParse
+	return a
+}
+
+// ResetInitOnlyOnce instructs the Parser to reevaluate the default values on the next parsing.
+func (a *Application) ResetInitOnlyOnce() { a.initMode = initDisabledOnMultipleParse }
+
 func (a *Application) defaultEnvarPrefix() string {
 	if a.defaultEnvars {
 		return a.Name
@@ -424,21 +443,28 @@ func (a *Application) setDefaults(context *ParseContext) error {
 		}
 	}
 
-	// Check required flags and set defaults.
-	for _, flag := range context.flags.long {
-		if flagElements[flag.name] == nil {
-			if err := flag.setDefault(); err != nil {
-				return err
+	if a.initMode != initDisabled {
+		// Check required flags and set defaults.
+		for _, flag := range context.flags.long {
+			if flagElements[flag.name] == nil {
+				if err := flag.setDefault(); err != nil {
+					return err
+				}
+			}
+		}
+
+		for _, arg := range context.arguments.args {
+			if argElements[arg.name] == nil {
+				if err := arg.setDefault(); err != nil {
+					return err
+				}
 			}
 		}
 	}
 
-	for _, arg := range context.arguments.args {
-		if argElements[arg.name] == nil {
-			if err := arg.setDefault(); err != nil {
-				return err
-			}
-		}
+	if a.initMode == initDisabledOnMultipleParse {
+		// We do not want to init the values
+		a.initMode = initDisabled
 	}
 
 	return nil

@@ -453,6 +453,70 @@ func TestAliases(t *testing.T) {
 	}
 }
 
+func TestDefaultValues(t *testing.T) {
+	type app struct {
+		*Application
+		b []bool
+		s []string
+	}
+	newApp := func() *app {
+		const nbElements = 5
+		a := app{
+			Application: newTestApp(),
+			b:           make([]bool, nbElements),
+			s:           make([]string, nbElements),
+		}
+		for i := 0; i < nbElements; i++ {
+			a.Flag(fmt.Sprintf("bool-%d", i+1), "").Short(rune('a' + i)).Default(fmt.Sprint(i%2 == 0)).BoolVar(&a.b[i])
+			a.Flag(fmt.Sprintf("string-%d", i+1), "").Short(rune('A' + i)).Default(fmt.Sprint("Default", i+1)).StringVar(&a.s[i])
+		}
+		return &a
+	}
+	cases := []struct {
+		name         string
+		initOnce     bool
+		reset        bool
+		args1, args2 string
+		expectB      []bool
+		expectS      []string
+	}{
+		{"No args", false, false, "", "",
+			[]bool{true, false, true, false, true},
+			[]string{"Default1", "Default2", "Default3", "Default4", "Default5"}},
+		{"Multiple init", false, false, "--no-bool-1 --bool-2 --string-3 test", "",
+			[]bool{true, false, true, false, true},
+			[]string{"Default1", "Default2", "Default3", "Default4", "Default5"}},
+		{"Init only once", true, false, "--no-bool-1 --bool-2 --string-3 test", "",
+			[]bool{false, true, true, false, true},
+			[]string{"Default1", "Default2", "test", "Default4", "Default5"}},
+		{"Init only once with override", true, false, "--no-bool-1 --bool-2 --string-3 test", "--string-2=2 --no-bool-2",
+			[]bool{false, false, true, false, true},
+			[]string{"Default1", "2", "test", "Default4", "Default5"}},
+		{"Init only once with override & reset", true, true, "--no-bool-1 --bool-2 --string-3 test", "--string-2=2 --no-bool-3",
+			[]bool{true, false, false, false, true},
+			[]string{"Default1", "2", "Default3", "Default4", "Default5"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			assert.NotPanics(t, func() {
+				a := newApp()
+				if c.initOnce {
+					a.Application.InitOnlyOnce()
+				}
+				_, err := a.Parse(split(c.args1))
+				if err == nil {
+					if c.reset {
+						a.ResetInitOnlyOnce()
+					}
+					_, err = a.Parse(split(c.args2))
+				}
+				assert.Equal(t, c.expectB, a.b, "bool(s)")
+				assert.Equal(t, c.expectS, a.s, "string(s)")
+			})
+		})
+	}
+}
+
 func split(s string) []string {
 	return strings.FieldsFunc(s, func(c rune) bool { return unicode.IsSpace(c) })
 }
