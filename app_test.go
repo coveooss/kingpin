@@ -453,6 +453,56 @@ func TestAliases(t *testing.T) {
 	}
 }
 
+func TestShortcuts(t *testing.T) {
+	type app struct {
+		*Application
+		o1, o2, o3 bool
+	}
+
+	newApp := func() *app {
+		a := app{Application: newTestApp().AutoShortcut()}
+		a.Flag("option-one", "").Alias("first", "first-option").BoolVar(&a.o1)
+		a.Flag("option-two", "").Alias("second", "second-option").NoAutoShortcut().BoolVar(&a.o2)
+		c := a.Command("test", "").NoAutoShortcut().Default()
+		c.Flag("option-three", "").Alias("option-3", "third").AutoShortcut().Default("true").BoolVar(&a.o3)
+		c.Flag("option-off", "").String() // This one is only there to confirm that there is no conflict with --oo (--option-one)
+		return &a
+	}
+
+	cases := []struct {
+		args      string
+		expect1   bool
+		expect2   bool
+		expect3   bool
+		expectErr error
+	}{
+		{"test --option-one", true, false, true, nil},
+		{"--oo", true, false, true, nil},
+		{"--first", true, false, true, nil},
+		{"--no-third", false, false, false, nil},
+		{"--first-option --option-three", true, false, true, nil},
+		{"--first-option --ot --no-o3", true, false, true, fmt.Errorf("flag 'option-three' cannot be repeated")},
+		{"--no-first-option", false, false, true, nil},
+		{"--option-one --no-first-option", true, false, true, fmt.Errorf("flag 'option-one' cannot be repeated")},
+		{"--nf --no-second --no3", false, false, false, nil},
+	}
+
+	for _, c := range cases {
+		t.Run(c.args, func(t *testing.T) {
+			a := newApp()
+			_, err := a.Parse(strings.Split(c.args, " "))
+			if c.expectErr == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.EqualError(t, err, c.expectErr.Error())
+			}
+			assert.Equal(t, c.expect1, a.o1, "option-one")
+			assert.Equal(t, c.expect2, a.o2, "option-two")
+			assert.Equal(t, c.expect3, a.o3, "option-three")
+		})
+	}
+}
+
 func split(s string) []string {
 	return strings.FieldsFunc(s, func(c rune) bool { return unicode.IsSpace(c) })
 }

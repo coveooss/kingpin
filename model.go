@@ -49,16 +49,17 @@ func (f *FlagGroupModel) FlagSummary() string {
 }
 
 type FlagModel struct {
-	Name        string
-	Help        string
-	Short       rune
-	Default     []string
-	Envar       string
-	Aliases     []string
-	PlaceHolder string
-	Required    bool
-	Hidden      bool
-	Value       Value
+	Name            string
+	Help            string
+	Short           rune
+	Default         []string
+	Envar           string
+	Aliases         []string
+	NegativeAliases []string
+	PlaceHolder     string
+	Required        bool
+	Hidden          bool
+	Value           Value
 }
 
 func (f *FlagModel) String() string {
@@ -202,22 +203,28 @@ func (f *flagGroup) Model() *FlagGroupModel {
 }
 
 func (f *FlagClause) Model() *FlagModel {
-	var aliases []string
-	for alias := range f.aliases {
-		aliases = append(aliases, alias)
+	var aliases, negatives []string
+	for alias, kind := range f.aliases {
+		if kind == aliasNegative {
+			negatives = append(negatives, alias)
+		} else {
+			aliases = append(aliases, alias)
+		}
 	}
 	sort.Strings(aliases)
+	sort.Strings(negatives)
 	return &FlagModel{
-		Name:        f.name,
-		Help:        f.help,
-		Short:       rune(f.shorthand),
-		Default:     f.defaultValues,
-		Envar:       f.envar,
-		PlaceHolder: f.placeholder,
-		Aliases:     aliases,
-		Required:    f.required,
-		Hidden:      f.hidden,
-		Value:       f.value,
+		Name:            f.name,
+		Help:            f.help,
+		Short:           rune(f.shorthand),
+		Default:         f.defaultValues,
+		Envar:           f.envar,
+		PlaceHolder:     f.placeholder,
+		Aliases:         aliases,
+		NegativeAliases: negatives,
+		Required:        f.required,
+		Hidden:          f.hidden,
+		Value:           f.value,
 	}
 }
 

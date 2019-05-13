@@ -140,6 +140,9 @@ func (p *ParseContext) mergeFlags(flags *flagGroup) {
 		}
 		p.flags.long[flag.name] = flag
 		p.flags.flagOrder = append(p.flags.flagOrder, flag)
+		if flag.autoShortcut == nil {
+			flag.autoShortcut = &flags.autoShortcut
+		}
 	}
 }
 
