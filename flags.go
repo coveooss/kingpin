@@ -237,17 +237,26 @@ func (f *FlagClause) init() error {
 
 // Dispatch to the given function after the flag is parsed and validated.
 func (f *FlagClause) Action(action Action) *FlagClause {
+	if action == nil {
+		f.actions = nil
+	}
 	f.addAction(action)
 	return f
 }
 
 func (f *FlagClause) PreAction(action Action) *FlagClause {
+	if action == nil {
+		f.preActions = nil
+	}
 	f.addPreAction(action)
 	return f
 }
 
 // HintAction registers a HintAction (function) for the flag to provide completions
 func (a *FlagClause) HintAction(action HintAction) *FlagClause {
+	if action == nil {
+		a.hintActions = nil
+	}
 	a.addHintAction(action)
 	return a
 }

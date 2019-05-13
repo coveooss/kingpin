@@ -293,12 +293,18 @@ func (a *Application) Author(author string) *Application {
 // All Action() callbacks are called in the order they are encountered on the
 // command line.
 func (a *Application) Action(action Action) *Application {
+	if action == nil {
+		a.actions = nil
+	}
 	a.addAction(action)
 	return a
 }
 
-// Action called after parsing completes but before validation and execution.
+// PreAction called after parsing completes but before validation and execution.
 func (a *Application) PreAction(action Action) *Application {
+	if action == nil {
+		a.preActions = nil
+	}
 	a.addPreAction(action)
 	return a
 }

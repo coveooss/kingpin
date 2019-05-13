@@ -150,11 +150,17 @@ func (a *ArgClause) NoEnvar() *ArgClause {
 }
 
 func (a *ArgClause) Action(action Action) *ArgClause {
+	if action == nil {
+		a.actions = nil
+	}
 	a.addAction(action)
 	return a
 }
 
 func (a *ArgClause) PreAction(action Action) *ArgClause {
+	if action == nil {
+		a.preActions = nil
+	}
 	a.addPreAction(action)
 	return a
 }
