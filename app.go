@@ -556,11 +556,6 @@ func (a *Application) setValues(context *ParseContext) (selected []string, err e
 			}
 
 		case *CmdClause:
-			if clause.validator != nil {
-				if err = clause.validator(clause); err != nil {
-					return
-				}
-			}
 			selected = append(selected, clause.name)
 			lastCmd = clause
 		}

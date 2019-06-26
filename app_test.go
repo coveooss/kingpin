@@ -1,6 +1,7 @@
 package kingpin
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -704,4 +705,25 @@ func TestCompletion(t *testing.T) {
 
 func split(s string) []string {
 	return strings.FieldsFunc(s, func(c rune) bool { return unicode.IsSpace(c) })
+}
+
+func TestCmdValidation(t *testing.T) {
+	c := newTestApp()
+	cmd := c.Command("cmd", "")
+
+	var a, b string
+	cmd.Flag("a", "a").StringVar(&a)
+	cmd.Flag("b", "b").StringVar(&b)
+	cmd.Validate(func(*CmdClause) error {
+		if a == "" && b == "" {
+			return errors.New("must specify either a or b")
+		}
+		return nil
+	})
+
+	_, err := c.Parse([]string{"cmd"})
+	assert.Error(t, err)
+
+	_, err = c.Parse([]string{"cmd", "--a", "A"})
+	assert.NoError(t, err)
 }
