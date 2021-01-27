@@ -65,6 +65,9 @@ type FlagModel struct {
 }
 
 func (f *FlagModel) String() string {
+	if f.Value == nil {
+		return ""
+	}
 	return f.Value.String()
 }
 
@@ -94,6 +97,13 @@ func (f *FlagModel) FormatPlaceHolder() string {
 	return strings.ToUpper(f.Name)
 }
 
+func (f *FlagModel) HelpWithEnvar() string {
+	if f.Envar == "" {
+		return f.Help
+	}
+	return fmt.Sprintf("%s ($%s)", f.Help, f.Envar)
+}
+
 // ArgGroupModel returns a read only value of an argument group.
 type ArgGroupModel struct {
 	Args []*ArgModel
@@ -104,7 +114,12 @@ func (a *ArgGroupModel) ArgSummary() string {
 	depth := 0
 	out := []string{}
 	for _, arg := range a.Args {
-		h := "<" + arg.Name + ">"
+		var h string
+		if arg.PlaceHolder != "" {
+			h = arg.PlaceHolder
+		} else {
+			h = "<" + arg.Name + ">"
+		}
 		if !arg.Required {
 			h = "[" + h
 			depth++
@@ -115,17 +130,30 @@ func (a *ArgGroupModel) ArgSummary() string {
 	return strings.Join(out, " ")
 }
 
+func (a *ArgModel) HelpWithEnvar() string {
+	if a.Envar == "" {
+		return a.Help
+	}
+	return fmt.Sprintf("%s ($%s)", a.Help, a.Envar)
+}
+
 // ArgModel represents a read only value of an argument clause.
 type ArgModel struct {
-	Name     string
-	Help     string
-	Default  []string
-	Envar    string
-	Required bool
-	Value    Value
+	Name        string
+	Help        string
+	Default     []string
+	Envar       string
+	PlaceHolder string
+	Required    bool
+	Hidden      bool
+	Value       Value
 }
 
 func (a *ArgModel) String() string {
+	if a.Value == nil {
+		return ""
+	}
+
 	return a.Value.String()
 }
 
@@ -150,6 +178,7 @@ type CmdModel struct {
 	Name        string
 	Aliases     []string
 	Help        string
+	HelpLong    string
 	FullCommand string
 	Depth       int
 	Hidden      bool
@@ -198,12 +227,14 @@ func (a *argGroup) Model() *ArgGroupModel {
 // Model returns a read only value of an argument clause.
 func (a *ArgClause) Model() *ArgModel {
 	return &ArgModel{
-		Name:     a.name,
-		Help:     a.help,
-		Default:  a.defaultValues,
-		Envar:    a.envar,
-		Required: a.required,
-		Value:    a.value,
+		Name:        a.name,
+		Help:        a.help,
+		Default:     a.defaultValues,
+		Envar:       a.envar,
+		PlaceHolder: a.placeholder,
+		Required:    a.required,
+		Hidden:      a.hidden,
+		Value:       a.value,
 	}
 }
 
@@ -260,6 +291,7 @@ func (c *CmdClause) Model() *CmdModel {
 		Name:           c.name,
 		Aliases:        c.aliases,
 		Help:           c.help,
+		HelpLong:       c.helpLong,
 		Depth:          depth,
 		Hidden:         c.hidden,
 		Default:        c.isDefault,

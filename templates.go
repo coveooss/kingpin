@@ -3,7 +3,7 @@ package kingpin
 // DefaultUsageTemplate is the default usage template.
 var DefaultUsageTemplate = `{{define "FormatCommand"}}\
 {{if .FlagSummary}} {{.FlagSummary}}{{end}}\
-{{range .Args}} {{if not .Required}}[{{end}}<{{.Name}}>{{if .Value|IsCumulative}}...{{end}}{{if not .Required}}]{{end}}{{end}}\
+{{range .Args}}{{if not .Hidden}} {{if not .Required}}[{{end}}{{if .PlaceHolder}}{{.PlaceHolder}}{{else}}<{{.Name}}>{{end}}{{if .Value|IsCumulative}}...{{end}}{{if not .Required}}]{{end}}{{end}}{{end}}\
 {{end}}\
 
 {{define "FormatCommands"}}\
@@ -50,7 +50,7 @@ Commands:
 // SeparateOptionalFlagsUsageTemplate is a usage template where command's optional flags are listed separately
 var SeparateOptionalFlagsUsageTemplate = `{{define "FormatCommand"}}\
 {{if .FlagSummary}} {{.FlagSummary}}{{end}}\
-{{range .Args}} {{if not .Required}}[{{end}}<{{.Name}}>{{if .Value|IsCumulative}}...{{end}}{{if not .Required}}]{{end}}{{end}}\
+{{range .Args}}{{if not .Hidden}} {{if not .Required}}[{{end}}{{if .PlaceHolder}}{{.PlaceHolder}}{{else}}<{{.Name}}>{{end}}{{if .Value|IsCumulative}}...{{end}}{{if not .Required}}]{{end}}{{end}}{{end}}\
 {{end}}\
 
 {{define "FormatCommands"}}\
@@ -101,7 +101,7 @@ Commands:
 // CompactUsageTemplate is the usage template with compactly formatted commands.
 var CompactUsageTemplate = `{{define "FormatCommand"}}\
 {{if .FlagSummary}} {{.FlagSummary}}{{end}}\
-{{range .Args}} {{if not .Required}}[{{end}}<{{.Name}}>{{if .Value|IsCumulative}}...{{end}}{{if not .Required}}]{{end}}{{end}}\
+{{range .Args}}{{if not .Hidden}} {{if not .Required}}[{{end}}{{if .PlaceHolder}}{{.PlaceHolder}}{{else}}<{{.Name}}>{{end}}{{if .Value|IsCumulative}}...{{end}}{{if not .Required}}]{{end}}{{end}}{{end}}\
 {{end}}\
 
 {{define "FormatCommandList"}}\
@@ -159,7 +159,7 @@ var ManPageTemplate = `{{define "FormatFlags"}}\
 
 {{define "FormatCommand"}}\
 {{if .FlagSummary}} {{.FlagSummary}}{{end}}\
-{{range .Args}} {{if not .Required}}[{{end}}<{{.Name}}{{if .Default}}*{{end}}>{{if .Value|IsCumulative}}...{{end}}{{if not .Required}}]{{end}}{{end}}\
+{{range .Args}}{{if not .Hidden}} {{if not .Required}}[{{end}}{{if .PlaceHolder}}{{.PlaceHolder}}{{else}}<{{.Name}}>{{end}}{{if .Value|IsCumulative}}...{{end}}{{if not .Required}}]{{end}}{{end}}{{end}}\
 {{end}}\
 
 {{define "FormatCommands"}}\
@@ -197,7 +197,7 @@ var ManPageTemplate = `{{define "FormatFlags"}}\
 // LongHelpTemplate is the template used go generate long help.
 var LongHelpTemplate = `{{define "FormatCommand"}}\
 {{if .FlagSummary}} {{.FlagSummary}}{{end}}\
-{{range .Args}} {{if not .Required}}[{{end}}<{{.Name}}>{{if .Value|IsCumulative}}...{{end}}{{if not .Required}}]{{end}}{{end}}\
+{{range .Args}}{{if not .Hidden}} {{if not .Required}}[{{end}}{{if .PlaceHolder}}{{.PlaceHolder}}{{else}}<{{.Name}}>{{end}}{{if .Value|IsCumulative}}...{{end}}{{if not .Required}}]{{end}}{{end}}{{end}}\
 {{end}}\
 
 {{define "FormatCommands"}}\
@@ -247,9 +247,7 @@ complete -F _{{.App.Name}}_bash_autocomplete -o default {{.App.Name}}
 
 `
 
-// ZshCompletionTemplate is the template used go generate zsh completion.
-var ZshCompletionTemplate = `
-#compdef {{.App.Name}}
+var ZshCompletionTemplate = `#compdef {{.App.Name}}
 
 _{{.App.Name}}() {
     local matches=($(${words[1]} --completion-bash "${(@)words[1,$CURRENT]}"))

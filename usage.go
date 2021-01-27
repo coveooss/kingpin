@@ -136,7 +136,7 @@ func (a *Application) UsageForContextWithTemplate(context *ParseContext, indent 
 			}
 			for _, flag := range f {
 				if !flag.Hidden {
-					rows = append(rows, [2]string{formatFlag(haveShort, flag), flag.Help})
+					rows = append(rows, [2]string{formatFlag(haveShort, flag), flag.HelpWithEnvar()})
 				}
 			}
 			return rows
@@ -162,11 +162,18 @@ func (a *Application) UsageForContextWithTemplate(context *ParseContext, indent 
 		"ArgsToTwoColumns": func(a []*ArgModel) [][2]string {
 			rows := [][2]string{}
 			for _, arg := range a {
-				s := "<" + arg.Name + ">"
-				if !arg.Required {
-					s = "[" + s + "]"
+				if !arg.Hidden {
+					var s string
+					if arg.PlaceHolder != "" {
+						s = arg.PlaceHolder
+					} else {
+						s = "<" + arg.Name + ">"
+					}
+					if !arg.Required {
+						s = "[" + s + "]"
+					}
+					rows = append(rows, [2]string{s, arg.HelpWithEnvar()})
 				}
-				rows = append(rows, [2]string{s, arg.Help})
 			}
 			return rows
 		},
