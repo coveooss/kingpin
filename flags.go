@@ -256,12 +256,6 @@ func (f *FlagClause) init() error {
 	return nil
 }
 
-// Help redefines the help text already associated to a flag.
-func (f *FlagClause) Help(help string) *FlagClause {
-	f.help = help
-	return f
-}
-
 // Action dispatches to the given function after the flag is parsed and validated.
 func (f *FlagClause) Action(action Action) *FlagClause {
 	if action == nil {
@@ -281,12 +275,12 @@ func (f *FlagClause) PreAction(action Action) *FlagClause {
 }
 
 // HintAction registers a HintAction (function) for the flag to provide completions.
-func (a *FlagClause) HintAction(action HintAction) *FlagClause {
+func (f *FlagClause) HintAction(action HintAction) *FlagClause {
 	if action == nil {
-		a.hintActions = nil
+		f.hintActions = nil
 	}
-	a.addHintAction(action)
-	return a
+	f.addHintAction(action)
+	return f
 }
 
 // HintOptions registers any number of options for the flag to provide completions.

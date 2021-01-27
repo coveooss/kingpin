@@ -247,6 +247,7 @@ complete -F _{{.App.Name}}_bash_autocomplete -o default {{.App.Name}}
 
 `
 
+// ZshCompletionTemplate is the template used go generate zsh completion.
 var ZshCompletionTemplate = `#compdef {{.App.Name}}
 
 _{{.App.Name}}() {

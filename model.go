@@ -97,6 +97,7 @@ func (f *FlagModel) FormatPlaceHolder() string {
 	return strings.ToUpper(f.Name)
 }
 
+// HelpWithEnvar returns help message with the associated environments variable.
 func (f *FlagModel) HelpWithEnvar() string {
 	if f.Envar == "" {
 		return f.Help
