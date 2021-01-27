@@ -476,6 +476,14 @@ func (a *Application) setDefaults(context *ParseContext) error {
 				if err := flag.setDefault(); err != nil {
 					return err
 				}
+			} else if v, ok := flag.value.(repeatableFlag); ok && v.IsCumulative() && flag.HasEnvarValue() {
+				// In the case of a repeatable flag, we join the environment variables to the provided values
+				for _, value := range flag.GetSplitEnvarValue() {
+					if err := flag.value.Set(value); err != nil {
+						return err
+					}
+				}
+				return nil
 			}
 		}
 
