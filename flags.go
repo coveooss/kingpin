@@ -147,7 +147,12 @@ func (f *flagGroup) parse(context *ParseContext) (*FlagClause, error) {
 					context.Elements = context.Elements[:len(context.Elements)-pos]
 					for x := len(current) - pos - 1; x > 0; x-- {
 						// We skip all remaining elements of the group
-						context.Next()
+						purgedToken := context.Next()
+						// That's not suppose to be possible, but let's add it either way
+						if purgedToken.Type == TokenLong {
+							err = fmt.Errorf("while skipping unmanaged shorts flags, skipped long flag '%s' from '%s'", purgedToken.Value, current)
+							return nil, err
+						}
 					}
 				}
 				context.appUnmanagedArgs.Unmanaged = append(context.appUnmanagedArgs.Unmanaged, current)
