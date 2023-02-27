@@ -162,13 +162,12 @@ func TestAppParseVerboseVarFlags(t *testing.T) {
 	assert.Equal(t, []string{"-var"}, app.Unmanaged)
 }
 
-func TestAppParseVerboseVarWithoutTheFlag(t *testing.T) {
+func TestAppParseUnmanagedVarWithTwoManagedFlags(t *testing.T) {
 	app := New("test", "")
 	app.allowUnmanaged = true
 	app.Command("foo", "")
 	app.Flag("verbose", "").Short('v').Bool()
 	app.Flag("aflag", "").Short('a').Bool()
-	// app.Flag("rflag", "").Short('r').Bool()
 
 	_, err := app.ParseContext([]string{"foo", "-var"})
 	assert.Nil(t, err)
