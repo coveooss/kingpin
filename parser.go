@@ -193,7 +193,12 @@ func (p *ParseContext) Next() *Token {
 	}
 
 	if strings.HasPrefix(arg, "--") || (strings.HasPrefix(arg, "-") && strings.Count(arg, "-") > 1) {
-		parts := strings.SplitN(arg[2:], "=", 2)
+		var parts []string
+		if strings.HasPrefix(arg, "--") {
+			parts = strings.SplitN(arg[2:], "=", 2)
+		} else {
+			parts = strings.SplitN(arg[1:], "=", 2)
+		}
 		token := &Token{p.argi, TokenLong, parts[0]}
 		if len(parts) == 2 {
 			p.Push(&Token{p.argi, TokenArg, parts[1]})

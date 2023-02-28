@@ -173,3 +173,14 @@ func TestAppParseUnmanagedVarWithTwoManagedFlags(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"-var"}, app.Unmanaged)
 }
+
+func TestAppParseShortLongFlags(t *testing.T) {
+	app := New("test", "")
+	app.allowUnmanaged = true
+	app.Command("foo", "")
+	app.Flag("verbose-level", "").Short('v').Bool()
+
+	ctx, err := app.ParseContext([]string{"foo", "-verbose-level"})
+	assert.Nil(t, err)
+	assert.Len(t, ctx.Elements, 2)
+}
