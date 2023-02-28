@@ -120,3 +120,56 @@ func TestParseContextPush(t *testing.T) {
 	b = c.Next()
 	assert.Equal(t, "bar", b.Value)
 }
+
+func TestAppParseSingleThenDoubleDashFlags(t *testing.T) {
+	app := New("test", "")
+	app.allowUnmanaged = true
+	app.Command("foo", "")
+
+	_, err := app.ParseContext([]string{"foo", "-single-dash", "--double-dash"})
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"-single-dash", "--double-dash"}, app.Unmanaged)
+}
+
+func TestAppParseTwoSingleDashFlags(t *testing.T) {
+	app := New("test", "")
+	app.allowUnmanaged = true
+	app.Command("foo", "")
+
+	_, err := app.ParseContext([]string{"foo", "-short-flag", "-verylongshort-flag"})
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"-short-flag", "-verylongshort-flag"}, app.Unmanaged)
+}
+
+func TestAppParseDoubleThenSingleDashFlags(t *testing.T) {
+	app := New("test", "")
+	app.allowUnmanaged = true
+	app.Command("foo", "")
+
+	_, err := app.ParseContext([]string{"foo", "--double-dash", "-single-dash"})
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"--double-dash", "-single-dash"}, app.Unmanaged)
+}
+
+func TestAppParseVerboseVarFlags(t *testing.T) {
+	app := New("test", "")
+	app.allowUnmanaged = true
+	app.Command("foo", "")
+	app.Flag("verbose", "").Short('v').Bool()
+
+	_, err := app.ParseContext([]string{"foo", "-v", "-var"})
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"-var"}, app.Unmanaged)
+}
+
+func TestAppParseUnmanagedVarWithTwoManagedFlags(t *testing.T) {
+	app := New("test", "")
+	app.allowUnmanaged = true
+	app.Command("foo", "")
+	app.Flag("verbose", "").Short('v').Bool()
+	app.Flag("aflag", "").Short('a').Bool()
+
+	_, err := app.ParseContext([]string{"foo", "-var"})
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"-var"}, app.Unmanaged)
+}
