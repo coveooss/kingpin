@@ -31,7 +31,7 @@ func HTTPHeader(s Settings) (target *http.Header) {
 	return
 }
 
-// This example ilustrates how to define custom parsers. HTTPHeader
+// This example illustrates how to define custom parsers. HTTPHeader
 // cumulatively parses each encountered --header flag into a http.Header struct.
 func ExampleValue() {
 	var (

@@ -62,11 +62,8 @@ func newStringValue(p *string) *stringValue {
 }
 
 func (f *stringValue) Set(s string) error {
-	v, err := s, error(nil)
-	if err == nil {
-		*f.v = (string)(v)
-	}
-	return err
+	*f.v = (string)(s)
+	return nil
 }
 
 func (f *stringValue) Get() interface{} { return (string)(*f.v) }

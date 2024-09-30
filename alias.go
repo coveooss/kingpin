@@ -58,8 +58,6 @@ func (f *FlagClause) addAlias(alias string, kind aliasKind) error {
 	return nil
 }
 
-type aliasGroupMixin struct{}
-
 // This function find the corresponding flag either by name or though aliases.
 // If the resulted flag correspond to a negative alias (-no-boolOption), invert is set to true
 func (fg *flagGroup) getFlagAlias(name string) (flag *FlagClause, invert bool, err error) {

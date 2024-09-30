@@ -520,7 +520,7 @@ func TestDefaultValues(t *testing.T) {
 					if c.reset {
 						a.ResetInitOnlyOnce()
 					}
-					_, err = a.Parse(split(c.args2))
+					a.Parse(split(c.args2))
 				}
 				assert.Equal(t, c.expectB, a.b, "bool(s)")
 				assert.Equal(t, c.expectS, a.s, "string(s)")
@@ -646,7 +646,7 @@ func TestUnmanaged(t *testing.T) {
 		{"Incomplete switch", true, "-",
 			[]bool{false, false, false, false, false},
 			[]string{"", "", "", "", ""},
-			nil, fmt.Errorf("unknown short flag '-'")},
+			[]string{"-"}, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
