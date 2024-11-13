@@ -2,7 +2,6 @@ package kingpin
 
 import (
 	"fmt"
-	"strings"
 )
 
 type flagGroup struct {
@@ -104,86 +103,87 @@ func (f *flagGroup) checkDuplicates() error {
 }
 
 func (f *flagGroup) parse(context *ParseContext) (*FlagClause, error) {
-	var token *Token
-	for {
-		token = context.Peek()
-		switch token.Type {
-		case TokenEOL:
-			return nil, nil
+	token := context.Peek()
+	switch token.Type {
+	case TokenEOL:
+		return nil, nil
 
-		case TokenLong, TokenShort:
-			flagToken := token
-			defaultValue := ""
-			var flag *FlagClause
-			var ok bool
-			var err error
-			invert := false
+	case TokenLong, TokenShort:
+		flagToken := token
+		defaultValue := ""
+		var flag *FlagClause
+		var ok bool
+		var err error
+		invert := false
 
-			name := token.Value
+		name := token.Value
+		if token.Type == TokenLong {
+			if flag, invert, err = f.getFlagAlias(name); err != nil {
+				return nil, err
+			} else if flag == nil {
+				err = fmt.Errorf("unknown long flag '%s'", flagToken)
+			}
+		} else if flag, ok = f.short[name]; !ok {
+			err = fmt.Errorf("unknown short flag '%s'", flagToken)
+		}
+
+		if err != nil {
+			if context.appUnmanagedArgs == nil {
+				return nil, err
+			}
+
+			// The current flag is not managed by the application, but we gather it anyway in the unmanaged args
+			current := context.current()
 			if token.Type == TokenLong {
-				if flag, invert, err = f.getFlagAlias(name); err != nil {
-					return nil, err
-				} else if flag == nil {
-					err = fmt.Errorf("unknown long flag '%s'", flagToken)
-				}
-			} else if flag, ok = f.short[name]; !ok {
-				err = fmt.Errorf("unknown short flag '%s'", flagToken)
-			}
-
-			if err != nil {
-				if context.appUnmanagedArgs == nil {
-					return nil, err
-				}
-				current := context.current()
-				if token.Type == TokenLong {
-					context.Next()
-				} else {
-					// We have to remove all previous elements from the same short flag element
-					pos := strings.Index(current, token.Value) - 1
-					if pos < 0 {
-						return nil, err
-					}
-					context.argi -= pos
-					context.Elements = context.Elements[:len(context.Elements)-pos]
-					for x := len(current) - pos - 1; x > 0; x-- {
-						// We skip all remaining elements of the group
-						purgedToken := context.Next()
-						// This error isn't supposed to be possible, but let's handle it anyway.
-						if purgedToken.Type == TokenLong {
-							err = fmt.Errorf("while skipping unmanaged shorts flags, skipped long flag '%s' from '%s'", purgedToken.Value, current)
-							return nil, err
-						}
-					}
-				}
-				context.appUnmanagedArgs.Unmanaged = append(context.appUnmanagedArgs.Unmanaged, current)
-				return nil, nil
-			}
-
-			context.Next()
-			flag.isSetByUser()
-
-			if fb, ok := flag.value.(boolFlag); ok && fb.IsBoolFlag() {
-				if invert {
-					defaultValue = "false"
-				} else {
-					defaultValue = "true"
-				}
-			} else {
-				token = context.Peek()
-				if token.Type != TokenArg {
-					context.Push(token)
-					return nil, fmt.Errorf("expected argument for flag '%s'", flagToken)
-				}
 				context.Next()
-				defaultValue = token.Value
+			} else {
+				remainingArgs := "-"
+				if len(context.args) > 0 && context.rawArgs[len(context.rawArgs)-len(context.args)] == current {
+					// There are more short flags in the current element
+					remainingArgs = context.args[0]
+				}
+
+				// We remove all previous elements from the same short flags group
+				previousElementsCount := len(current) - len(remainingArgs) - 1
+				context.Elements = context.Elements[:len(context.Elements)-previousElementsCount]
+
+				// We consume the remaining short flags of the current group
+				for i := 0; i < len(remainingArgs); i++ {
+					// We consume the remaining short flags of the current group
+					if consumed := context.Next(); consumed.Type != TokenShort {
+						break
+					}
+				}
 			}
 
-			context.matchedFlag(flag, defaultValue)
-			return flag, nil
-
-		default:
+			context.appUnmanagedArgs.Unmanaged = append(context.appUnmanagedArgs.Unmanaged, current)
 			return nil, nil
 		}
+
+		context.Next()
+		flag.isSetByUser()
+
+		if fb, ok := flag.value.(boolFlag); ok && fb.IsBoolFlag() {
+			if invert {
+				defaultValue = "false"
+			} else {
+				defaultValue = "true"
+			}
+		} else {
+			token = context.Peek()
+			if token.Type != TokenArg {
+				context.Push(token)
+				return nil, fmt.Errorf("expected argument for flag '%s'", flagToken)
+			}
+			context.Next()
+			defaultValue = token.Value
+		}
+
+		context.matchedFlag(flag, defaultValue)
+		return flag, nil
+
+	default:
+		return nil, nil
 	}
 }
 
