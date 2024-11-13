@@ -1,4 +1,4 @@
-module github.com/coveord/kingpin/v2
+module github.com/coveooss/kingpin/v2
 
 go 1.17
 

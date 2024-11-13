@@ -592,6 +592,10 @@ func TestUnmanaged(t *testing.T) {
 			b:           make([]bool, nbElements),
 			s:           make([]string, nbElements),
 		}
+
+		// We generate a set of valid flags:
+		//   bool-1, bool-2, ... to bool-{nbElements} with short names -a, -b, ..., -e
+		//   string-1, string-2, ... to string-{nbElements} with short names -A, -B, ..., -E
 		for i := 0; i < nbElements; i++ {
 			a.Flag(fmt.Sprintf("bool-%d", i+1), "").Short(rune('a' + i)).BoolVar(&a.b[i])
 			a.Flag(fmt.Sprintf("string-%d", i+1), "").Short(rune('A' + i)).StringVar(&a.s[i])
@@ -639,6 +643,14 @@ func TestUnmanaged(t *testing.T) {
 			[]bool{true, true, false, true, true},
 			[]string{"", "", "", "", ""},
 			[]string{"-cX"}, nil},
+		{"Bad switch mixed with long", true, "-ab -cX-long -de",
+			[]bool{true, true, false, true, true},
+			[]string{"", "", "", "", ""},
+			[]string{"-cX-long"}, nil},
+		{"Bad switch mixed with very long", true, "-ab -cX-very-long -de",
+			[]bool{true, true, false, true, true},
+			[]string{"", "", "", "", ""},
+			[]string{"-cX-very-long"}, nil},
 		{"Many bad switches with args", true, "-ab -var x=1 -var y=2 -de -var z=3 test",
 			[]bool{true, true, false, true, true},
 			[]string{"", "", "", "", ""},
